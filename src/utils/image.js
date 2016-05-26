@@ -35,17 +35,17 @@ var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C
           ctx.drawImage(img, 0, 0);
           image.setAttribute('xlink:href', canvas.toDataURL('image/png'));
           left--;
-          if (left == 0) {
+          if (left === 0) {
             callback();
           }
-        }
+        };
         img.onerror = function () {
           console.error('Could not load ' + href);
           left--;
           if (left === 0) {
             callback();
           }
-        }
+        };
       })(images[i]);
     }
   }
@@ -59,7 +59,7 @@ var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C
         continue;
       }
       var rules = sheets[i].cssRules;
-      if (rules != null) {
+      if (rules !== null) {
         for (var j = 0; j < rules.length; j++) {
           var rule = rules[j];
           if (typeof (rule.style) != 'undefined') {
@@ -99,8 +99,8 @@ var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C
         height = box.y + box.height;
         clone.setAttribute('transform', clone.getAttribute('transform').replace(/translate\(.*?\)/, ''));
 
-        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.appendChild(clone)
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.appendChild(clone);
         clone = svg;
       }
 
@@ -126,5 +126,5 @@ var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C
         cb(uri);
       }
     });
-  }
+  };
 })();

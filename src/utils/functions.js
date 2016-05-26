@@ -6,27 +6,46 @@ var utils = utils || {
   isObject(d) {
     return d && d.constructor === Object && d instanceof Object;
   },
-  
-  isFunction(func){
-     return func && {}.toString.call(func) === '[object Function]';
+
+  isFunction(func) {
+    return func && {}.toString.call(func) === '[object Function]';
   },
-  
+
   isNumeric(n) {
     return !isNaN(parseFloat(n)) && isFinite(n);
   },
-  
-  isPercentage(n){
+
+  isPercentage(n) {
     let split = null;
-    if(!n || typeof n !== 'string'){
+    let number = null;
+    if (!n || typeof n !== 'string') {
       return false;
     }
-    split =  n.split('%');
-    return split.length === 2 
-      && (+split[0] >= 0) 
-      && (+split[0] <=100);
-    
+    split = n.split('%');
+    number = (+split[0]);
+    return split.length === 2 &&
+      (number >= 0) &&
+      (number <= 100);
+
   },
-  
+
+  keys(array, field) {
+    var keys = new Set();
+    var element = null;
+
+    if (!array || !array.length) {
+      return [];
+    }
+
+    for (let i = 0; i < array.length; i++) {
+      element = field ? array[i][field] : array[i];
+      if (element) {
+        keys.add(element);
+      }
+    }
+    return keys;
+  },
+
   getNumberOfDifferentArrayKeys(array, field) {
     var keys = [];
     var element = null;
@@ -66,5 +85,25 @@ var utils = utils || {
       b = _getItem.call(o, b);
       return o.desc * (a < b ? -1 : +(a > b));
     });
+  },
+  findElement(arr, propName, propValue) {
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i][propName] === propValue) {
+        return arr[i];
+      }
+    }
+    return null;
+    // will return null if not found; you could return a default instead
+  },
+  deg2rad(deg) {
+    return deg * Math.PI / 180;
   }
 };
+
+
+//Extends Set functionality
+Set.prototype.equals = function (as) {
+  if (as.size !== this.size) return false;
+  for (var a of as) if (!this.has(a)) return false;
+  return true;
+}

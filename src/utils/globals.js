@@ -15,6 +15,9 @@ const _default = {
       },
       '.x.axis path': {
         'display': 'none'
+      },
+      '.x.axis.label, .y.axis.label': {
+        'font': '12px sans-serif'
       }
     },
     xaxis: {
@@ -31,11 +34,12 @@ const _default = {
       bottom: 30,
       left: 50
     },
-    width: '80%', // %, auto, or numeric 
-    height: 250,
+    width: '100%', // %, auto, or numeric 
+    height: 350,
     ticks: 5, // ticks for y axis.
     tooltip(data) { // Allows HTML
-      return 'Object info: ' + JSON.stringify(data);
+      return '<b>Eje x</b>: ' + data.x + '<br/>' +
+        '<b>Eje y</b>: ' + data.y;
     },
     tickLabel: '',
     selector: '#chart',
@@ -69,24 +73,31 @@ const _default = {
   Linechart: {
     selector: '#chart',
     xaxis: {
-      label: 'X'
+      label: 'X',
+      ticks: 5
     },
     yaxis: {
-      label: 'Y'
+      label: 'Y',
+      ticks: 5
     },
+    colorScale: Colors.category7(),
+    area: false,
+    areaOpacity: 0.4,
     margin: {
       top: 20,
       right: 20,
       bottom: 30,
       left: 50
     },
-    width: 600,
+    width: '100%', // %, auto, or numeric 
     height: 250,
     style: {
-      'path': {
-        'stroke': '#11D3BC',
+      '.line': {
         'stroke-width': 2,
         'fill': 'none'
+      },
+      '.area': {
+        'stroke-width': 0
       },
       '.axis': {
         'font': '10px sans-serif'
@@ -98,9 +109,11 @@ const _default = {
       },
       '.x.axis path': {
         'display': 'none'
+      },
+      '.x.axis.label, .y.axis.label': {
+        'font': '12px sans-serif'
       }
     },
-    ticks: 5, // ticks for y axis.
     markers: {
       shape: 'circle',
       size: 5,
@@ -120,7 +133,7 @@ const _default = {
           .transition()
           .duration(50)
           .attr('r', 7)
-        ;
+          ;
       },
       leave() {
         d3.select(this)
@@ -135,7 +148,7 @@ const _default = {
     },
     tickLabel: '',
     transitionDuration: 300,
-    maxNumberOfElements: 0, // used by keepDrawing to reduce the number of elements in the current chart
+    maxNumberOfElements: 10, // used by keepDrawing to reduce the number of elements in the current chart
     sortData: {
       descending: false,
       prop: 'x'
@@ -144,10 +157,7 @@ const _default = {
   Streamgraph: {
     selector: '#chart',
     xDateFormat: '%m/%d/%y',
-    colorScale: {
-      from: 'orange',
-      to: 'blue'
-    },
+    colorScale: Colors.category5(),
     xaxis: {
       label: ''
     },
@@ -158,11 +168,16 @@ const _default = {
       '.axis': {
         'font': '10px sans-serif'
       },
-
       '.axis path,.axis line': {
         'fill': 'none',
         'stroke': '#000',
         'shape-rendering': 'crispEdges'
+      },
+      '.x.axis path': {
+        'display': 'none'
+      },
+      '.x.axis.label, .y.axis.label': {
+        'font': '12px sans-serif'
       }
     },
     margin: {
@@ -171,7 +186,7 @@ const _default = {
       bottom: 30,
       left: 50
     },
-    width: 900,
+    width: '100%', // %, auto, or numeric 
     height: 300,
     ticks: 5, // ticks for y axis.
     tooltip(object) {
@@ -200,6 +215,88 @@ const _default = {
     },
     transitionDuration: 300,
     maxNumberOfElements: 0, // used by keepDrawing to reduce the number of elements in the current chart
+    sortData: {
+      descending: false,
+      prop: 'x'
+    }
+  },
+  Gauge: {
+    selector: '#chart',
+    colorScale: Colors.diverging_red_blue(),
+    invertColorScale: true,
+    minLevel: 0,
+    maxLevel: 100,
+    minAngle: -90,
+    maxAngle: 180,
+    ringWidth: 50,
+    ringMargin: 20,
+    labelInset: 10,
+    needleNutRadius: 25,
+    needleLenghtRatio: 0.8,
+    numericIndicator: true,
+    xaxis: {
+      label: 'X'
+    },
+    yaxis: {
+      label: 'Y'
+    },
+    margin: {
+      top: 20,
+      right: 20,
+      bottom: 30,
+      left: 50
+    },
+    width: '50%', // %, auto, or numeric
+    height: 250,
+    style: {
+      '.labels': {
+        'font': '18px sans-serif',
+        'text-anchor': 'middle'
+      },
+      '.text-indicator': {
+        'font': '48px sans-serif',
+        'text-anchor': 'middle'
+      },
+      '.needle': {
+        'fill': '#666666'
+      }
+    },
+    ticks: 10, // ticks for y axis.
+    markers: {
+      shape: 'circle',
+      size: 5,
+      color: '#FFFCCA',
+      outlineColor: '#537780',
+      outlineWidth: 2
+    },
+    tooltip(data) {
+      return JSON.stringify(data);
+    },
+    events: {
+      down() {
+        d3.select(this).classed('hover', false);
+      },
+      over() {
+        d3.select(this)
+          .transition()
+          .duration(50)
+          .attr('r', 7)
+          ;
+      },
+      leave() {
+        d3.select(this)
+          .transition()
+          .duration(50)
+          .attr('r', 5)
+          .style('stroke-width', 2);
+      },
+      click(d, i) {
+        console.log(d, i);
+      }
+    },
+    tickLabel: '',
+    transitionDuration: 300,
+    maxNumberOfElements: 5, // used by keepDrawing to reduce the number of elements in the current chart
     sortData: {
       descending: false,
       prop: 'x'

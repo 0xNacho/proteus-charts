@@ -17,70 +17,129 @@
     <script src='../dist/vendor.js'></script>
     <script src='../dist/proteus-charts.js'></script>
 
+    <meta charset="utf-8">
+
 </head>
 
 <body>
-    <div class='container-fluid'>
-        <div class='col-md-5' id='linechart'></div>
+    <div class='container'>
+        <div class='col-md-6' id='linechart'></div>
         <script>
             var data =[
-                {x:1, y:3},
-                {x:2, y:12},
-                {x:3, y:21},
-                {x:4,y:5},
-                {x:5,y:5},
-                {x:6,y:34},
-                {x:7,y:4},
-                {x:8,y:12},
-                {x:9,y:32},
-                {x:10,y:15},
-                {x:13,y:5},
-                {x:12,y:2}
+                {
+                    key: 'serie1', 
+                    values: [
+                        {x:1, y:3},
+                        {x:2, y:12},
+                        {x:3, y:21},
+                        {x:4,y:5},
+                        {x:5,y:5},
+                        {x:6,y:34},
+                        {x:7,y:4},
+                        {x:8,y:12},
+                        {x:9,y:32},
+                        {x:10,y:15},
+                        {x:11,y:5},
+                        {x:12,y:2}
+                    ]
+                },
+                {
+                    key: 'serie2', 
+                    values: [
+                        {x:1, y:1},
+                        {x:2, y:4},
+                        {x:3, y:12},
+                        {x:4,y:11},
+                        {x:5,y:11},
+                        {x:6,y:12},
+                        {x:7,y:13},
+                        {x:8,y:1},
+                        {x:9,y:0},
+                        {x:10,y:1},
+                    ]
+                },
+                {
+                    key: 'serie3', 
+                    values: [
+                        {x:1, y:30},
+                        {x:2, y:13},
+                        {x:3, y:1},
+                        {x:4,y:4},
+                        {x:5,y:5},
+                        {x:6,y:7},
+                        {x:7,y:9},
+                        {x:8,y:12},
+                        {x:9,y:12},
+                        {x:10,y:12},
+                        {x:11,y:68},
+                    ]
+                }
+            ];
+
+        //Default config uses #chart selector
+        linechart = new Linechart(data, {'selector': '#linechart', height: 250, area:true});
+        linechart.draw();
+        </script>
+        <div class='col-md-6' id='barchart'></div>
+
+        <script>
+            var bData = [
+                {
+                  key: '2005',
+                  values: [
+                    {x:"España", y:3},  
+                    {x:"Francia", y:12},
+                    {x:"UK", y:21},
+                  ]
+                },
+                {
+                  key: '2008',
+                  values: [
+                    {x:"España", y:9},  
+                    {x:"Francia", y:20},
+                    {x:"UK", y:20},
+                  ]
+                },
+                {
+                  key: '2011',
+                  values: [
+                    {x:"España", y:12},  
+                    {x:"Francia", y:11},
+                    {x:"UK", y:32},
+                  ]
+                },
+                {
+                  key: '2014',
+                  values: [
+                    {x:"España", y:11},  
+                    {x:"Francia", y:8},
+                    {x:"UK", y:21},
+                  ]
+                }
             ];
         //Default config uses #chart selector
-        linechart = new Linechart(data, {'selector': '#linechart'});
-        linechart.draw();
+        barchart = new Barchart(bData, {'selector': '#barchart', height: 250});
+        barchart.draw();
         </script>
-        <div class='col-md-5' id='barchart'></div>
-        <!--Update data -->
-        <div class='col-md-5' id='stream_linechart'></div>
+
+        <div class='col-md-6' id='streamgraph'></div>
+
         <script>
-            let stream_linechart = new Linechart([{x:1, y:30},{x:2, y:21}], {'selector': '#stream_linechart'});
-            let streamLinechartIndex = 3;
-            setInterval(() =>{
-                stream_linechart.addPoint({x:streamLinechartIndex, y:Math.random() * 100});
-                streamLinechartIndex++;
-            }, 800);
-        </script>
-        <div class='col-md-5' id='stream_barchart'></div>
-    </div>
-
-
-    <!-- vendor.js contains: d3.js-->
-
-    <script>
-        /** 
-        var data =[
-            {x:1, y:3},
-            {x:2, y:12},
-            {x:3, y:21},
-            {x:4,y:5},
-            {x:5,y:5},
-            {x:6,y:34},
-            {x:7,y:4},
-            {x:8,y:12},
-            {x:9,y:32},
-            {x:10,y:15},
-            {x:13,y:5},
-            {x:12,y:2}
-        ];
+            var sData = [{'key':'AR','value':'0.1','date':'01/08/13'},{'key':'AR','value':'0.15','date':'01/09/13'},{'key':'AR','value':'0.35','date':'01/10/13'},{'key':'AR','value':'0.38','date':'01/11/13'},{'key':'AR','value':'0.22','date':'01/12/13'},{'key':'AR','value':'0.16','date':'01/13/13'},{'key':'AR','value':'0.07','date':'01/14/13'},{'key':'AR','value':'0.02','date':'01/15/13'},{'key':'AR','value':'0.17','date':'01/16/13'},{'key':'AR','value':'0.33','date':'01/17/13'},{'key':'AR','value':'0.4','date':'01/18/13'},{'key':'AR','value':'0.32','date':'01/19/13'},{'key':'AR','value':'0.26','date':'01/20/13'},{'key':'AR','value':'0.35','date':'01/21/13'},{'key':'AR','value':'0.4','date':'01/22/13'},{'key':'AR','value':'0.32','date':'01/23/13'},{'key':'AR','value':'0.26','date':'01/24/13'},{'key':'AR','value':'0.22','date':'01/25/13'},{'key':'AR','value':'0.16','date':'01/26/13'},{'key':'AR','value':'0.22','date':'01/27/13'},{'key':'AR','value':'0.1','date':'01/28/13'},{'key':'DJ','value':'0.35','date':'01/08/13'},{'key':'DJ','value':'0.36','date':'01/09/13'},{'key':'DJ','value':'0.37','date':'01/10/13'},{'key':'DJ','value':'0.22','date':'01/11/13'},{'key':'DJ','value':'0.24','date':'01/12/13'},{'key':'DJ','value':'0.26','date':'01/13/13'},{'key':'DJ','value':'0.34','date':'01/14/13'},{'key':'DJ','value':'0.21','date':'01/15/13'},{'key':'DJ','value':'0.18','date':'01/16/13'},{'key':'DJ','value':'0.45','date':'01/17/13'},{'key':'DJ','value':'0.32','date':'01/18/13'},{'key':'DJ','value':'0.35','date':'01/19/13'},{'key':'DJ','value':'0.3','date':'01/20/13'},{'key':'DJ','value':'0.28','date':'01/21/13'},{'key':'DJ','value':'0.27','date':'01/22/13'},{'key':'DJ','value':'0.26','date':'01/23/13'},{'key':'DJ','value':'0.15','date':'01/24/13'},{'key':'DJ','value':'0.3','date':'01/25/13'},{'key':'DJ','value':'0.35','date':'01/26/13'},{'key':'DJ','value':'0.42','date':'01/27/13'},{'key':'DJ','value':'0.42','date':'01/28/13'},{'key':'MS','value':'0.21','date':'01/08/13'},{'key':'MS','value':'0.25','date':'01/09/13'},{'key':'MS','value':'0.27','date':'01/10/13'},{'key':'MS','value':'0.23','date':'01/11/13'},{'key':'MS','value':'0.24','date':'01/12/13'},{'key':'MS','value':'0.21','date':'01/13/13'},{'key':'MS','value':'0.35','date':'01/14/13'},{'key':'MS','value':'0.39','date':'01/15/13'},{'key':'MS','value':'0.4','date':'01/16/13'},{'key':'MS','value':'0.36','date':'01/17/13'},{'key':'MS','value':'0.33','date':'01/18/13'},{'key':'MS','value':'0.43','date':'01/19/13'},{'key':'MS','value':'0.4','date':'01/20/13'},{'key':'MS','value':'0.34','date':'01/21/13'},{'key':'MS','value':'0.28','date':'01/22/13'},{'key':'MS','value':'0.26','date':'01/23/13'},{'key':'MS','value':'0.37','date':'01/24/13'},{'key':'MS','value':'0.41','date':'01/25/13'},{'key':'MS','value':'0.46','date':'01/26/13'},{'key':'MS','value':'0.47','date':'01/27/13'},{'key':'MS','value':'0.41','date':'01/28/13'},{'key':'RC','value':'0.1','date':'01/08/13'},{'key':'RC','value':'0.15','date':'01/09/13'},{'key':'RC','value':'0.35','date':'01/10/13'},{'key':'RC','value':'0.38','date':'01/11/13'},{'key':'RC','value':'0.22','date':'01/12/13'},{'key':'RC','value':'0.16','date':'01/13/13'},{'key':'RC','value':'0.07','date':'01/14/13'},{'key':'RC','value':'0.02','date':'01/15/13'},{'key':'RC','value':'0.17','date':'01/16/13'},{'key':'RC','value':'0.33','date':'01/17/13'},{'key':'RC','value':'0.4','date':'01/18/13'},{'key':'RC','value':'0.32','date':'01/19/13'},{'key':'RC','value':'0.26','date':'01/20/13'},{'key':'RC','value':'0.35','date':'01/21/13'},{'key':'RC','value':'0.4','date':'01/22/13'},{'key':'RC','value':'0.32','date':'01/23/13'},{'key':'RC','value':'0.26','date':'01/24/13'},{'key':'RC','value':'0.22','date':'01/25/13'},{'key':'RC','value':'0.16','date':'01/26/13'},{'key':'RC','value':'0.22','date':'01/27/13'},{'key':'RC','value':'0.1','date':'01/28/13'},{'key':'CG','value':'0.1','date':'01/08/13'},{'key':'CG','value':'0.15','date':'01/09/13'},{'key':'CG','value':'0.35','date':'01/10/13'},{'key':'CG','value':'0.38','date':'01/11/13'},{'key':'CG','value':'0.22','date':'01/12/13'},{'key':'CG','value':'0.16','date':'01/13/13'},{'key':'CG','value':'0.07','date':'01/14/13'},{'key':'CG','value':'0.02','date':'01/15/13'},{'key':'CG','value':'0.17','date':'01/16/13'},{'key':'CG','value':'0.33','date':'01/17/13'},{'key':'CG','value':'0.4','date':'01/18/13'},{'key':'CG','value':'0.32','date':'01/19/13'},{'key':'CG','value':'0.26','date':'01/20/13'},{'key':'CG','value':'0.35','date':'01/21/13'},{'key':'CG','value':'0.4','date':'01/22/13'},{'key':'CG','value':'0.32','date':'01/23/13'},{'key':'CG','value':'0.26','date':'01/24/13'},{'key':'CG','value':'0.22','date':'01/25/13'},{'key':'CG','value':'0.16','date':'01/26/13'},{'key':'CG','value':'0.22','date':'01/27/13'},{'key':'CG','value':'0.1','date':'01/28/13'},{'key':'RI','value':'0.1','date':'01/08/13'},{'key':'RI','value':'0.15','date':'01/09/13'},{'key':'RI','value':'0.35','date':'01/10/13'},{'key':'RI','value':'0.38','date':'01/11/13'},{'key':'RI','value':'0.22','date':'01/12/13'},{'key':'RI','value':'0.16','date':'01/13/13'},{'key':'RI','value':'0.07','date':'01/14/13'},{'key':'RI','value':'0.02','date':'01/15/13'},{'key':'RI','value':'0.17','date':'01/16/13'},{'key':'RI','value':'0.33','date':'01/17/13'},{'key':'RI','value':'0.4','date':'01/18/13'},{'key':'RI','value':'0.32','date':'01/19/13'},{'key':'RI','value':'0.26','date':'01/20/13'},{'key':'RI','value':'0.35','date':'01/21/13'},{'key':'RI','value':'0.4','date':'01/22/13'},{'key':'RI','value':'0.32','date':'01/23/13'},{'key':'RI','value':'0.26','date':'01/24/13'},{'key':'RI','value':'0.22','date':'01/25/13'},{'key':'RI','value':'0.16','date':'01/26/13'},{'key':'RI','value':'0.22','date':'01/27/13'},{'key':'RI','value':'0.1','date':'01/28/13'}];
         //Default config uses #chart selector
-        linechart = new Linechart(data, {'selector': '#linechart'});
-        linechart.draw();
-        
-        barchart = new Barchart(data, {'selector': '#barchart'});
-        barchart.draw();**/
-    </script>
+        streamgraph = new Streamgraph(sData, {'selector': '#streamgraph', height: 250});
+        streamgraph.draw();
+        </script>
+
+        <div class='col-md-6' id='gaugegraph'></div>
+
+        <script>
+            var data = [{x: 50}];
+            //Default config uses #chart selector
+            gauge = new Gauge(data, {selector: '#gaugegraph', min: 0, max: 100, numericIndicator: false});
+            gauge.draw();
+        </script>
+    </div>
 </body>
 
 </html>

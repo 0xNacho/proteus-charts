@@ -12,6 +12,23 @@ class Chart {
       throw new Error(clazz + ' is non-instanciable');
     }
     this.events = {};
+
+    //Create chaining api
+    Chart.prototype.custom = new Object();
+
+    var customProperties = [];
+    for (let p in _default[this.constructor.name]) {
+      //hasOwnProperty?
+      customProperties.push(p);
+    }
+
+    customProperties.forEach((property) => {
+      Chart.prototype["custom"][property] = function (value) {
+        console.debug('changing property', property, 'to', value, this);
+        //create apply method to apply changes
+        return this;
+      }
+    })
   }
 
   /**
@@ -30,54 +47,6 @@ class Chart {
    */
   _initializeSVGContext() {
     this._svg = new SvgStrategy(strategies[this.constructor.name](this._getChartContext()));
-  }
-
-  /**
-   * @param  {Object} data Data object. This method infer the type of data, which could be:
-   * Array: Data is an static object.
-   * Object: Data is a data source we need to connect to, in order to receive a stream of data.
-   */
-  _inferDataSource(data) {
-    if (utils.isObject(data)) {
-      this._initializeWebsocketDataSource(data);
-    } else if (!utils.isArray(data)) {
-      throw new TypeError('Wrong data format');
-    }
-  }
-
-  /**
-   * Initialize a connecton between browser and server through a Websocket connections
-   * @param  {Object} source Connection details.
-   */
-  _initializeWebsocketDataSource(source) {
-    let _initialize = () => {
-      this.ws = new WebSocket(source.endpoint);
-
-      this.ws.onopen = () => {
-      };
-
-      this.ws.onerror = (e) => {
-        throw new Error('Error with websocket connection', e);
-      };
-
-      this.ws.onmessage = (event) => {
-        //var data = JSON.parse(event.data).points;
-        var data = JSON.parse(event.data.substr(2))[1];
-        setTimeout(() => {
-          this.keepDrawing(data);
-        }, 50);
-      };
-    };
-
-    //private streaming functions, only available when using websockets
-    this.start = () => {
-      _initialize();
-    }
-    this.stop = () => {
-      if (this.ws) {
-        this.ws.close();
-      }
-    }
   }
 
   /**
@@ -139,6 +108,7 @@ class Chart {
     if (!utils.isArray(data)) {
       throw new TypeError('draw method is only allowed with static data.');
     }
+    data = JSON.parse(JSON.stringify(data));
     this._svg.draw(data);
   }
 
@@ -173,7 +143,44 @@ class Chart {
     return this;
   }
 
+  _configureDatasource() {
+    this.datasource.configure(this.reactor);
+    this.reactor.registerEvent('onmessage');
+    this.reactor.registerEvent('onerror');
+    this.reactor.registerEvent('onopen');
+
+    this.reactor.addEventListener('onmessage', (data) => {
+      this.keepDrawing(data);
+    });
+
+    this.reactor.addEventListener('onopen', (e) => {
+      console.debug('Connected to websocket endpoint.', e);
+    });
+
+    this.reactor.addEventListener('onerror', (error) => {
+      console.error('An error has occured: ', error);
+    });
+  }
+
+  pause() {
+    if (!this.datasource) {
+      throw ('You need a datasource to pause a streaming');
+    }
+    this.reactor.removeEventListener('onmessage');
+  }
+
+  resume() {
+    if (!this.datasource) {
+      throw ('You need a datasource to resume a streaming');
+    }
+
+    this.reactor.addEventListener('onmessage', (data) => {
+      this.keepDrawing(data);
+    });
+  }
+
 }
+
 
 /**
  * Basic chart. This class in inherited in all basic charts implementatios.
@@ -183,6 +190,39 @@ class Chart {
 class Basic extends Chart {
   constructor() {
     super();
+    this.reactor = new Reactor();
+  }
+
+  keepDrawing(datum) {
+    let config = this.config;
+    let maxNumberOfElements = config.maxNumberOfElements;
+
+    if (!datum) {
+      console.warn('attemp to draw null datum');
+      return;
+    }
+
+    if (datum.constructor.name === 'Array') {
+      for (let i in datum) {
+        this.keepDrawing(datum[i]);
+      }
+    }
+    else {
+      //Find serie or initialize this.
+      let serie = utils.findElement(this.data, 'key', datum.key);
+      if (!serie || !serie.values) {
+        serie = {
+          key: datum.key,
+          values: []
+        };
+        this.data.push(serie);
+      }
+      //use addToSerie()
+
+      serie.values = serie.values.concat(datum.values);
+    }
+    this.draw(this.data);
+    return this.data;
   }
 }
 

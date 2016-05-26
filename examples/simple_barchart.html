@@ -7,12 +7,13 @@
 <!--<![endif]-->
 
 <head>
-  <link rel="stylesheet" href="//rawgithub.com/Caged/d3-tip/master/examples/example-styles.css">
+  <title>Simple barchart</title>
+  <meta charset="utf-8"/>
 </head>
 
 <body>
+  <div style="height:400px;" id='chart'></div>
 
-  <div style="width:400px;" id='chart'></div>
 
   <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
   <script src='../node_modules/d3/d3.min.js'></script>
@@ -22,6 +23,8 @@
   <script src='../src/utils/strategies.js'></script>
   <script src='../src/utils/colors.js'></script>
   <script src='../src/utils/globals.js'></script>
+  <script src='../src/utils/ProteusEvent.js'></script>
+
   <script src='../src/svg/SvgStrategy.js'></script>
   <script src='../src/svg/svg.js'></script>
   <script src='../src/svg/strategy_barchart.js'></script>
@@ -29,20 +32,19 @@
   <script src='../src/charts/barchart.js' type='text/javascript'></script>
 
   <script>
+    
     var data = [
-                {x:1, y:3},
-                {x:2, y:12},
-                {x:3, y:21},
-                {x:4,y:5},
-                {x:5,y:5},
-                {x:6,y:34},
-                {x:7,y:4},
-                {x:8,y:12},
-                {x:9,y:32},
-                {x:10,y:15},
-                {x:13,y:5},
-                {x:12,y:2}
+                {
+                  key: 'bar1',
+                  values: [
+                    {x:"España", y:3},  
+                    {x:"Francia", y:12},
+                    {x:"UK", y:21},
+                  ]
+                }
             ];
+            
+            //var data = [{x:1, y: 5}, {x: 3, y:6}];
             //Default config uses #chart selector
             barchart = new Barchart(data);
             barchart.draw();

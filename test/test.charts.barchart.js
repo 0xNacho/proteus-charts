@@ -19,7 +19,7 @@ describe('Barchart', () => {
     });
 
     it('will construct a bar chart given some data', () => {
-      var data = [{ x: 0, y: 1 }, { x: 0, y: 2 }];
+      var data = [{ key: 'serie1', values: [{ x: 0, y: 1 }, { x: 0, y: 2 }] }];
       var chart = new Barchart(data);
       assert.isOk(chart);
     });
@@ -34,7 +34,7 @@ describe('Barchart', () => {
 
   describe('chart functions ', () => {
     it('toPNG()', (done) => {
-      var data = [{ x: 0, y: 1 }, { x: 1, y: 2 }];
+      var data = [{ key: 'serie1', values: [{ x: 0, y: 1 }, { x: 1, y: 2 }] }];
       var chart = new Barchart(data);
       chart.draw();
 
@@ -49,7 +49,7 @@ describe('Barchart', () => {
 
     it('addSerie(): should return an error because serie needs to be an object', () => {
       assert.throws(() => {
-        var data = [{ x: 0, y: 1 }, { x: 1, y: 2 }];
+        var data = [{ key: 'serie1', values: [{ x: 0, y: 1 }, { x: 1, y: 2 }] }];
         var chart = new Barchart(data);
         chart.draw();
         chart.addSerie([{}, {}], true);
@@ -58,13 +58,13 @@ describe('Barchart', () => {
 
     it('addSeries(): should return an error because serie needs to be an array', () => {
       assert.throws(() => {
-        var data = [{ x: 0, y: 1 }, { x: 1, y: 2 }];
+        var data = [{ key: 'serie1', values: [{ x: 0, y: 1 }, { x: 1, y: 2 }] }];
         var chart = new Barchart(data);
         var serie = {};
-        
-        chart.draw();        
+
+        chart.draw();
         chart.addSeries(serie);
-        
+
       }, Error);
     });
   });

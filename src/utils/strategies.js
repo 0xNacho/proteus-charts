@@ -7,5 +7,8 @@ const strategies = {
   },
   Streamgraph(chartContext) {
     return new SvgStreamgraphStrategy(chartContext);
+  },
+  Gauge(chartContext) {
+    return new SvgGaugeStrategy(chartContext);
   }
 };

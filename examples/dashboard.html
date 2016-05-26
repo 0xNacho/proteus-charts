@@ -1,0 +1,115 @@
+<!doctype html>
+<!--[if lt IE 7]>
+<html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>
+<html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>
+<html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class='no-js' lang=''>
+<!--<![endif]-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags always come first -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" integrity="sha384-y3tfxAZXuh4HwSYylfB+J125MxIs6mR5FOHamPBG064zB+AFeWH94NdvaCBm8qnd"
+    crossorigin="anonymous">
+
+  <!-- Proteus scripts -->
+  <!--<script src='https://cdn.rawgit.com/proteus-h2020/proteus-charts/development/dist/vendor.js'></script>-->
+  <!--<script src='https://cdn.rawgit.com/proteus-h2020/proteus-charts/development/dist/proteus-charts.js'></script>-->
+  <script src="../dist/vendor.js"></script>
+  <script src="../dist/proteus-charts.js"></script>
+
+</head>
+
+<body>
+  <!-- Load data -->
+  <script>
+    var data = {
+    endpoint: 'ws://192.168.4.245:8787/websocket'
+  };
+  
+  var wsConnection = new WebsocketDatasource(data);
+  </script>
+
+  <!-- #    DASHBOARD    # -->
+
+  <div class='container'>
+    <div class="row">
+      <h1 class="display-1">Proteus Dashboard Demo</h1>
+    </div>
+    <div class="row">
+      <button class="btn btn-info col-md-5" onclick="wsConnection.start()">Start/Resume</button>
+      <button class="btn btn-info col-md-5" onclick="wsConnection.stop()">Stop/Pause</button>
+    </div>
+    <hr/>
+    <div class='col-md-5' id='linechart'></div>
+    <div class='col-md-5' id='barchart'></div>
+    <div class='col-md-5' id='gauge'></div>
+
+
+  </div>
+
+
+  </div>
+  <script>
+    var linechart = new Linechart(wsConnection, {
+        selector: "#linechart",
+        maxNumberOfElements: 10,
+        width: 'auto',
+        height: 200,
+        xDataType: 'Date',
+        xDateFormat: '%Y-%m-%dT%H:%M:%SZ',
+        maxNumberOfElements: 10
+      });
+      //linechart.start();
+  </script>
+  <script>
+    var barchart = new Barchart(wsConnection, {
+        selector: "#barchart",
+        maxNumberOfElements: 2,
+        width: 'auto',
+        height: 200,
+      });
+      //barchart.start();
+  </script>
+  <script>
+    var gData = [{x: 86}];
+    //Default config uses #chart selector
+    gauge = new Gauge(gData, {
+      min: 0,
+      max: 100,
+      selector: '#gauge'
+    });
+    
+    setTimeout(() => {
+      gauge.draw();
+      setInterval(()=>{
+        var datum = Math.round(Math.random() * 100);
+        gData[0].x  = datum;
+        gauge.draw();
+        
+      },1000);
+    }, 3000);
+      
+  </script>
+
+  <script>
+    wsConnection.start();
+  </script>
+
+  <!-- jQuery first, then Bootstrap JS. -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" integrity="sha384-vZ2WRJMwsjRMW/8U7i6PWi6AlO1L79snBrmgiDpgIWJ82z8eA5lenwvxbMV1PAh7"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>

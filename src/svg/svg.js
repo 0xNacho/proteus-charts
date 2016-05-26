@@ -38,11 +38,21 @@ class SvgChart {
             .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 
         //Create tooltip (d3-tip)
-        if(this.tooltip){
-            this.tooltip = d3.tip().attr('class', 'd3-tip').html(this.tooltip);
+        if (this.tip) {
+            this.tooltip = d3.tip()
+                .attr('class', 'd3-tip')
+                .style({
+                    'line-height': 1,
+                    'padding': '12px',
+                    'background': 'rgba(0, 0, 0, 0.8)',
+                    'color': '#fff',
+                    'border-radius': '2px',
+                    'pointer-events': 'none'
+                })
+                .html(this.tip);
             this.svg.call(this.tooltip);
         }
-        
+
         //Append a new group with 'x' aXis
         this.svg.append('g')
             .attr('class', 'x axis')
@@ -52,20 +62,20 @@ class SvgChart {
         //Append a new group with 'y' aXis
         this.svg.append('g')
             .attr('class', 'y axis')
-            .attr('stroke-dasharray', '5, 5')
+            .attr('stroke-dasharray', '1, 2')
             .call(this.yAxis)
             .append('text');
 
         // Append axes labels
         this.svg.append('text')
             .attr('text-anchor', 'middle')
-            .attr('class', 'xaxis-label')
+            .attr('class', 'x axis label')
             .attr('x', this.width / 2)
             .attr('y', this.height + this.margin.bottom)
             .text(this.xAxisLabel);
         this.svg.append('text')
             .attr('text-anchor', 'middle')
-            .attr('class', 'yaxis-label')
+            .attr('class', 'y axis label')
             .attr('transform', 'rotate(-90)')
             .attr('x', - this.height / 2)
             .attr('y', - this.margin.left / 1.3)
@@ -108,7 +118,7 @@ class SvgChart {
                 .width;
             percentage = width.split('%')[0];
             return Math.round(percentage * containerWidth / 100);
-        }else{
+        } else {
             throw Error('Unknow chart width: ' + width);
         }
 
@@ -130,14 +140,16 @@ class SvgChart {
         }
         this.selector = config.selector || _default[this.cType].selector;
         this.margin = config.margin || _default[this.cType].margin;
-        this.width = config.width
-            ? this._calculateWidth(config.width) - this.margin.left - this.margin.right
+        this.width = config.width ? this._calculateWidth(config.width) - this.margin.left - this.margin.right
             : this._calculateWidth(_default[this.cType].width) - this.margin.left - this.margin.right;
         this.height = config.height || _default[this.cType].height;
         this.ticks = config.ticks || _default[this.cType].ticks;
+        this.xticks = config.xaxis.ticks || _default[this.cType].xaxis.ticks;
+        this.yticks = config.yaxis.ticks || _default[this.cType].yaxis.ticks;
         this.tickLabel = config.tickLabel || _default[this.cType].tickLabel;
         this.transitionDuration = config.transitionDuration || _default[this.cType].transitionDuration;
-        this.tooltip = config.tooltip || _default[this.cType].tooltip;
+        //this.tooltip is d3-tip, so that renaming this bar to 'tip' is required
+        this.tip = config.tooltip || _default[this.cType].tooltip;
         this.events = {};
         this.events.down = config.events.down || _default[this.cType].events.down;
         this.events.up = config.events.up || _default[this.cType].events.up;
@@ -149,5 +161,46 @@ class SvgChart {
         this.colorScale = config.colorScale || _default[this.cType].colorScale;
         this.xAxisLabel = config.xaxis.label || _default[this.cType].xaxis.label;
         this.yAxisLabel = config.yaxis.label || _default[this.cType].yaxis.label;
+    }
+
+    _endAllTransitions(transition, callback) {
+        var n;
+        if (transition.empty()) {
+            callback();
+        }
+        else {
+            n = transition.size();
+            transition.each('end', () => {
+                n--;
+                if (n === 0) {
+                    callback();
+                }
+            });
+        }
+    }
+
+    _removeUserEvents() {
+        var userEvents = [
+            'mousedown.user',
+            'mouseup.user',
+            'mouseleave.user',
+            'mouseover.user',
+            'click.user',
+            'mouseover.tip',
+            'mouseout.tip'
+        ];
+        for (let key in userEvents) {
+            this.interactiveElements.on(userEvents[key], null);
+        }
+    }
+    _updateXaxis(){
+        this.svg.select('.x.axis').transition().duration(this.transitionDuration).call(this.xAxis);
+    }
+    _updateYaxis(){
+        this.svg.select('.y.axis').transition().duration(this.transitionDuration).call(this.yAxis);
+    }
+    _updateAxis() {
+        this._updateXaxis();
+        this._updateYaxis();
     }
 }

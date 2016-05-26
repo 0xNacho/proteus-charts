@@ -9,9 +9,15 @@ class SvgStreamgraphStrategy extends SvgChart {
         this.xAxis = d3.svg.axis()
             .scale(this.x)
             .orient('bottom')
-            .ticks(d3.time.days);
+            .ticks(d3.time.weeks);
 
-        this.yAxis = d3.svg.axis().scale(this.y);
+        this.yAxis = d3.svg.axis().scale(this.y).orient('left')
+            .innerTickSize(-this.width)
+            .outerTickSize(0)
+            .tickPadding(20)
+            .ticks(this.ticks, this.tickLabel);
+
+        this.keys = null;
     }
 
 	/**
@@ -20,11 +26,21 @@ class SvgStreamgraphStrategy extends SvgChart {
 	 * 
 	 */
     draw(data) {
-        var layers = null; //streamgraph layers
+        var dataLayered = null; //streamgraph layers
         var nColors = null; //number of colors = different keys
-        var fromColor = this.colorScale.from;
-        var toColor = this.colorScale.to;
-        var colorrange = null; //color range based on user preferences
+
+        if (!this.keys) {
+            //Fist draw
+            this.keys = utils.keys(data, 'key');
+        }
+        else {
+            if (!this.keys.equals(utils.keys(data, 'key'))) {
+                console.warn('Attemping to draw a streamgraph with a different set of keys after initialization. Skipping.');
+                console.log(this.keys);
+                console.log(utils.keys(data, 'key'));
+                return;
+            }
+        }
 
         //Initialize data
         if (!this._initialized) {
@@ -35,6 +51,8 @@ class SvgStreamgraphStrategy extends SvgChart {
             d.date = this.format.parse(d.date);
             d.value = +d.value;
         });
+
+
         this.stack = d3.layout.stack()
             .offset('silhouette')
             .values((d) => d.values)
@@ -50,24 +68,32 @@ class SvgStreamgraphStrategy extends SvgChart {
             .y0((d) => this.y(d.y0))
             .y1((d) => this.y(d.y0 + d.y));
 
-        layers = this.stack(this.nest.entries(data));
+        dataLayered = this.stack(this.nest.entries(data));
 
         this.x.domain(d3.extent(data, (d) => d.date));
         this.y.domain([0, d3.max(data, (d) => (d.y0 + d.y))]);
 
-        nColors = utils.getNumberOfDifferentArrayKeys(data, 'key');
-        colorrange = chroma.scale([fromColor, toColor]).colors(nColors);
+        nColors = utils.keys(data, 'key').size;
 
-        this.z = d3.scale.ordinal().range(colorrange);
+        this.z = this.colorScale;
 
-        this.svg.selectAll('.layer')
-            .data(layers)
+        var series = this.svg.selectAll('.series')
+            .data(dataLayered)
             .enter()
-            .append('path')
+            .append('g')
+            .attr('class', 'series')
+            .style('stroke', (d, i) => {
+                return this.colorScale(i);
+            });
+
+        series.append('path');
+        
+        var layers = this.svg.selectAll('path')
+            .data(dataLayered, (d) => d.key);
+
+        layers
             .attr('class', 'layer')
             .attr('d', (d) => this.area(d.values))
-
-
             .style('fill', (d, i) => this.z(i));
 
         this.svg.selectAll('.layer')
@@ -78,24 +104,15 @@ class SvgStreamgraphStrategy extends SvgChart {
             .on('mouseover.user', this.events.over)
             .on('click.user', this.events.click);
 
-        var vertical = d3.select(this.selector)
-            .append('div')
-            .attr('class', 'remove')
-            .style('position', 'absolute')
-            .style('z-index', '19')
-            .style('width', '1px')
-            .style('height', '380px')
-            .style('top', '10px')
-            .style('bottom', '30px')
-            .style('left', '0px')
-            .style('background', '#000000');
+        this._updateAxis();
 
+        this.interactiveElements = this._layers;
         this._applyCSS();
     }
 
     _initialize() {
-      super._initialize();
-      this._initialized = true;
+        super._initialize();
+        this._initialized = true;
     }
 
 	/**

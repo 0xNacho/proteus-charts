@@ -1,62 +1,88 @@
-
 <!doctype html>
-<!--[if lt IE 7]>      <html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
-<!--[if IE 7]>         <html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
-<!--[if IE 8]>         <html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if lt IE 7]>
+<html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>
+<html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>
+<html class='no-js lt-ie9' lang=''> <![endif]-->
 <!--[if gt IE 8]><!-->
- <html class='no-js' lang=''>
+<html class='no-js' lang=''>
 <!--<![endif]-->
-    <head></head>
-    <body>
 
-        <div id='chart'></div>
+<head></head>
 
-        <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
-        <script src='../node_modules/d3/d3.min.js'></script>
-        <script src='../src/utils/functions.js'></script>
-        <script src='../src/utils/image.js'></script>
-        <script src='../src/utils/strategies.js'></script>
-        <script src='../src/utils/colors.js'></script>
-        <script src='../src/utils/globals.js'></script>
-        <script src='../src/svg/SvgStrategy.js'></script>
-        <script src='../src/svg/svg.js'></script>
+<body>
 
-        <script src='../src/svg/strategy_linechart.js'></script>
-        <script src='../src/charts/classes.js' type='text/javascript'></script>
-        <script src='../src/charts/linechart.js' type='text/javascript'></script>
+  <div id='chart'></div>
 
-        <script>
-//       var data = [
-//            {x:1, y:3},
-//            {x:2, y:12},
-//            {x:3, y:21},
-//            {x:4,y:5},
-//            {x:5,y:5},
-//            {x:6,y:34},
-//            {x:7,y:4},
-//            {x:8,y:12},
-//            {x:9,y:32},
-//            {x:10,y:15},
-//            {x:13,y:5},
-//            {x:12,y:2}
-//        ];
+  <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
+  <script src='../node_modules/d3/d3.min.js'></script>
+  <script src='../node_modules/d3-tip/index.js'></script>
 
-        var data = {
-            "series1": [
-                {"x":1, "y":3},
-                {"x":2, "y":12},
-                {"x":3, "y":21}
-            ],
-            "series2": [
-                {"x":10,"y":15},
-                {"x":13,"y":5},
-                {"x":12,"y":2}
-            ]
-        };
+  <script src='../src/utils/functions.js'></script>
+  <script src='../src/utils/image.js'></script>
+  <script src='../src/utils/strategies.js'></script>
+  <script src='../src/utils/colors.js'></script>
+  <script src='../src/utils/globals.js'></script>
+  <script src='../src/utils/ProteusEvent.js'></script>
 
-        //Default config uses #chart selector
-        linechart = new Linechart(data);
-        linechart.draw();
-        </script>
-    </body>
+  <script src='../src/svg/SvgStrategy.js'></script>
+  <script src='../src/svg/svg.js'></script>
+
+  <script src='../src/svg/strategy_linechart.js'></script>
+  <script src='../src/charts/classes.js' type='text/javascript'></script>
+  <script src='../src/charts/linechart.js' type='text/javascript'></script>
+
+  <script>
+    var data = [
+    {
+      key: 'series1',
+      values: [
+        {"x": 1, "y": 10},
+        {"x": 2, "y": 2},
+        {"x": 3, "y": 3},
+        {"x": 4, "y": 2}
+      ]
+    },
+    {
+      key: 'series2',
+      values: [
+        {"x": 1, "y": 1.5},
+        {"x": 2, "y": 1.5},
+        {"x": 3, "y": 5}
+      ]
+    },
+    {
+      key: 'series3',
+      values: [
+        {x: 1, y: 3},
+        {x: 2, y: 12},
+        {x: 3, y: 21},
+        {x: 4, y: 5},
+        {x: 5, y: 5},
+        {x: 6, y: 34},
+        {x: 7, y: 4},
+        {x: 8, y: 12},
+        {x: 9, y: 32},
+        {x: 10, y: 15},
+        {x: 12, y: 2},
+        {x: 13, y: 5}
+      ]
+    },
+    {
+      key: 'series4',
+      values: [
+        {x: 0, y: 0},
+        {x: 1, y: 0.5}
+      ]
+    }
+  ];
+
+  //Default config uses #chart selector
+  linechart = new Linechart(data);
+  linechart.draw();
+
+  </script>
+</body>
+
 </html>

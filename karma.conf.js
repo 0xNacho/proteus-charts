@@ -14,16 +14,16 @@ module.exports =  (config) => {
 
 
     // list of files / patterns to load in the browser
+    // If multiple patterns match the same file, it's included as if it only matched the first pattern.
     files: [
       'node_modules/d3/d3.min.js',
       'node_modules/d3-tip/index.js',
       'src/utils/*.js',
+      'src/datasources/*.js',
       'src/svg/svg.js',
       'src/svg/*.js',
       'src/charts/classes.js',
-      'src/charts/barchart.js',
-      'src/charts/linechart.js',
-      'src/charts/streamgraph.js',
+      'src/charts/*.js',
       'test/*.js'
     ],
 

@@ -7,48 +7,96 @@
 <!--<![endif]-->
 
 <head>
-    <link rel="stylesheet" href="//rawgithub.com/Caged/d3-tip/master/examples/example-styles.css">
+    <title>Simple linechart</title>
 </head>
 
 <body>
 
-    <div id='chart'></div>
+  <div id='chart'></div>
+  <br/>
+  <div id='chart-temporal'></div>
 
-    <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
-    <script src='../node_modules/d3/d3.min.js'></script>
-    <script src='../node_modules/d3-tip/index.js'></script>
+  <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
+  <script src='../node_modules/d3/d3.min.js'></script>
+  <script src='../node_modules/d3-tip/index.js'></script>
 
-    <script src='../src/utils/functions.js'></script>
-    <script src='../src/utils/image.js'></script>
-    <script src='../src/utils/strategies.js'></script>
-    <script src='../src/utils/colors.js'></script>
-    <script src='../src/utils/globals.js'></script>
-    <script src='../src/svg/SvgStrategy.js'></script>
-    <script src='../src/svg/svg.js'></script>
+  <script src='../src/utils/functions.js'></script>
+  <script src='../src/utils/image.js'></script>
+  <script src='../src/utils/strategies.js'></script>
+  <script src='../src/utils/colors.js'></script>
+  <script src='../src/utils/globals.js'></script>
+  <script src='../src/utils/ProteusEvent.js'></script>
 
-    <script src='../src/svg/strategy_linechart.js'></script>
-    <script src='../src/charts/classes.js' type='text/javascript'></script>
-    <script src='../src/charts/linechart.js' type='text/javascript'></script>
+  <script src='../src/svg/SvgStrategy.js'></script>
+  <script src='../src/svg/svg.js'></script>
 
-    <script>
-        var data =[
-            {x:1, y:3},
-            {x:2, y:12},
-            {x:3, y:21},
-            {x:4,y:5},
-            {x:5,y:5},
-            {x:6,y:34},
-            {x:7,y:4},
-            {x:8,y:12},
-            {x:9,y:32},
-            {x:10,y:15},
-            {x:13,y:5},
-            {x:12,y:2}
+  <script src='../src/svg/strategy_linechart.js'></script>
+  <script src='../src/charts/classes.js' type='text/javascript'></script>
+  <script src='../src/charts/linechart.js' type='text/javascript'></script>
+
+  <script>
+    var data = [
+      {
+        key: 'series1',
+        values: [
+            {x:3, y:5},
+            {x:6, y:5},
+            {x:8, y:21},
+            {x:9, y:0}
+        ]
+      },
+      {
+        key: 'series2',
+        values: [
+          {x:3, y:4},
+          {x:6, y:4},
+          {x:8, y:20},
+          {x:9, y:12}
+        ]
+      }
+    ];
+    //Default config uses #chart selector
+    linechart = new Linechart(data, {area: true});
+    linechart.draw();
+
+        var temporalData = [
+            {
+                key: 'series1',
+                values: [
+                    {x: '01/01/16', y: 3},
+                    {x: '01/02/16', y: 5},
+                    {x: '01/03/16', y: 3},
+                    {x: '01/04/16', y: 8},
+                    {x: '01/04/16', y: 3},
+                    {x: '01/05/16', y: 5},
+                    {x: '01/06/16', y: 3},
+                    {x: '01/07/16', y: 8},
+                    {x: '01/08/16', y: 3},
+                    {x: '01/09/16', y: 5},
+                    {x: '01/10/16', y: 3},
+                    {x: '01/11/16', y: 8},
+                    {x: '01/12/16', y: 3},
+                    {x: '01/13/16', y: 5},
+                    {x: '01/14/16', y: 3},
+                    {x: '01/15/16', y: 8},
+                    {x: '01/16/16', y: 3},
+                    {x: '01/17/16', y: 8},
+                    {x: '01/18/16', y: 3},
+                    {x: '01/19/16', y: 5},
+                    {x: '01/20/16', y: 3},
+                    {x: '01/21/16', y: 8}
+                ]
+            }
         ];
-        //Default config uses #chart selector
-        linechart = new Linechart(data);
-        linechart.draw();
-    </script>
+
+        temporalLinechart = new Linechart(temporalData, {
+          xDataType: 'Date',
+          xDateFormat: '%m/%d/%y',
+          xaxis: { ticks: d3.time.days },
+          selector: '#chart-temporal'
+        });
+        temporalLinechart.draw();
+  </script>
 </body>
 
 </html>

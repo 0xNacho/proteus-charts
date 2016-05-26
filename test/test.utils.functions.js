@@ -79,5 +79,41 @@ describe('Utils', () => {
       assert.deepEqual(expectedResult, result);
     });
 
+    describe('utils.findElement()', () => {
+      it('should find an element in a key/value array', () => {
+        var a = [
+          {key: 'a', value: 0},
+          {key: 'b', value: 1},
+          {key: 'c', value: 2},
+          {key: 'd', value: 3}
+        ];
+        assert.deepEqual(utils.findElement(a, 'key', 'a'), {key: 'a', value: 0});
+        assert.deepEqual(utils.findElement(a, 'key', 'c'), {key: 'c', value: 2});
+        assert.deepEqual(utils.findElement(a, 'key', 'd'), {key: 'd', value: 3});
+      });
+      it('should return null when the element is not found', () => {
+        var a = [
+          {key: 'a', value: 0},
+          {key: 'b', value: 1},
+          {key: 'c', value: 2},
+          {key: 'd', value: 3}
+        ];
+        assert.deepEqual(utils.findElement(a, 'key', 'e'), null);
+      });
+    });
+
+    describe('utils.deg2rad()', () => {
+      it('should convert degrees to radians', () => {
+        var pi = Math.PI;
+        assert.equal(utils.deg2rad(0), 0);
+        assert.equal(utils.deg2rad(45), pi / 4);
+        assert.equal(utils.deg2rad(60), pi / 3);
+        assert.equal(utils.deg2rad(90), pi / 2);
+        assert.equal(utils.deg2rad(180), pi);
+        assert.equal(utils.deg2rad(270), (3 * pi) / 2);
+        assert.equal(utils.deg2rad(360), 2 * pi);
+        assert.equal(utils.deg2rad(-90), -(pi / 2));
+      });
+    });
   });
 });

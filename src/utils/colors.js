@@ -4,167 +4,167 @@
 class Colors {
 
   static category1() {
-    return d3.scale.ordinal().range(palette_category1);
+    return d3.scale.ordinal().range(paletteCategory1);
   }
 
   static category2() {
-    return d3.scale.ordinal().range(palette_category2);
+    return d3.scale.ordinal().range(paletteCategory2);
   }
 
   static category3() {
-    return d3.scale.ordinal().range(palette_category3);
+    return d3.scale.ordinal().range(paletteCategory3);
   }
 
   static category4() {
-    return d3.scale.ordinal().range(palette_category4);
+    return d3.scale.ordinal().range(paletteCategory4);
   }
 
   static category5() {
-    return d3.scale.ordinal().range(palette_category5);
+    return d3.scale.ordinal().range(paletteCategory5);
   }
 
   static category6() {
-    return d3.scale.ordinal().range(palette_category6);
+    return d3.scale.ordinal().range(paletteCategory6);
   }
 
   static category7() {
-    return d3.scale.ordinal().range(palette_category7);
+    return d3.scale.ordinal().range(paletteCategory7);
   }
 
   static category8() {
-    return d3.scale.ordinal().range(palette_category8);
+    return d3.scale.ordinal().range(paletteCategory8);
   }
 
   static sequentialYellow() {
-    return d3.scale.linear().range(palette_sequential_yellow);
+    return d3.scale.quantile().range(paletteSequentialYellow);
   }
 
   static sequentialRedOrange() {
-    return d3.scale.linear().range(palette_sequential_red_orange);
+    return d3.scale.quantile().range(paletteSequentialRedOrange);
   }
 
   static sequentialRed() {
-    return d3.scale.linear().range(palette_sequential_red);
+    return d3.scale.quantile().range(paletteSequentialRed);
   }
 
   static sequentialPink() {
-    return d3.scale.linear().range(palette_sequential_pink);
+    return d3.scale.quantile().range(paletteSequentialPink);
   }
 
   static sequentialPurplePink() {
-    return d3.scale.linear().range(palette_sequential_purple_pink);
+    return d3.scale.quantile().range(paletteSequentialPurplePink);
   }
 
   static sequentialPurple() {
-    return d3.scale.linear().range(palette_sequential_purple);
+    return d3.scale.quantile().range(paletteSequentialPurple);
   }
 
   static sequentialBlue() {
-    return d3.scale.linear().range(palette_sequential_blue);
+    return d3.scale.quantile().range(paletteSequentialBlue);
   }
 
   static sequentialLightBlue() {
-    return d3.scale.linear().range(palette_sequential_lightBlue);
+    return d3.scale.quantile().range(paletteSequentialLightBlue);
   }
 
   static sequentialBlueViolet() {
-    return d3.scale.linear().range(palette_sequential_blue_violet);
+    return d3.scale.quantile().range(paletteSequentialBlueViolet);
   }
 
   static sequentialTurquoise() {
-    return d3.scale.linear().range(palette_sequential_turquoise);
+    return d3.scale.quantile().range(paletteSequentialTurquoise);
   }
 
   static sequentialLightGreen() {
-    return d3.scale.linear().range(palette_sequential_lightGreen);
+    return d3.scale.quantile().range(paletteSequentialLightGreen);
   }
 
   static sequentialDarkGreen() {
-    return d3.scale.linear().range(palette_sequential_darkGreen);
+    return d3.scale.quantile().range(paletteSequentialDarkGreen);
   }
 
   static sequentialGreenBrown() {
-    return d3.scale.linear().range(palette_sequential_green_brown);
+    return d3.scale.quantile().range(paletteSequentialGreenBrown);
   }
 
   static sequentialBrown() {
-    return d3.scale.linear().range(palette_sequential_brown);
+    return d3.scale.quantile().range(paletteSequentialBrown);
   }
 
   static sequentialGrey() {
-    return d3.scale.linear().range(palette_sequential_grey);
+    return d3.scale.quantile().range(paletteSequentialGrey);
   }
 
   static sequentialVioletCb() {
-    return d3.scale.linear().range(palette_sequential_violet_cb);
+    return d3.scale.quantile().range(paletteSequentialVioletCb);
   }
 
   static sequentialPinkCb() {
-    return d3.scale.linear().range(palette_sequential_pink_cb);
+    return d3.scale.quantile().range(paletteSequentialPinkCb);
   }
 
   static sequentialBlueCb() {
-    return d3.scale.linear().range(palette_sequential_blue_cb);
+    return d3.scale.quantile().range(paletteSequentialBlueCb);
   }
 
   static sequentialGreenCb() {
-    return d3.scale.linear().range(palette_sequential_green_cb);
+    return d3.scale.quantile().range(paletteSequentialGreenCb);
   }
 
   static sequentialGreenBrownCb() {
-    return d3.scale.linear().range(palette_sequential_green_brown_cb);
+    return d3.scale.quantile().range(paletteSequentialGreenBrownCb);
   }
 
   static diverging_spectral1() {
-    return d3.scale.linear().range(palette_diverging_spectral1);
+    return d3.scale.quantile().range(paletteDivergingSpectral1);
   }
 
   static diverging_spectral2() {
-    return d3.scale.linear().range(palette_diverging_spectral2);
+    return d3.scale.quantile().range(paletteDivergingSpectral2);
   }
 
   static diverging_spectral3() {
-    return d3.scale.linear().range(palette_diverging_spectral3);
+    return d3.scale.quantile().range(paletteDivergingSpectral3);
   }
 
   static diverging_brown_turquoise() {
-    return d3.scale.linear().range(palette_diverging_brown_turquoise);
+    return d3.scale.quantile().range(paletteDivergingBrownTurquoise);
   }
 
   static diverging_orange_pink() {
-    return d3.scale.linear().range(palette_diverging_orange_pink);
+    return d3.scale.quantile().range(paletteDivergingBrownTurquoise);
   }
 
   static diverging_red_blue() {
-    return d3.scale.linear().range(palette_diverging_red_blue);
+    return d3.scale.quantile().range(paletteDivergingRedBlue);
   }
 
   static diverging_red_grey() {
-    return d3.scale.linear().range(palette_diverging_red_grey);
+    return d3.scale.quantile().range(paletteDivergingRedGrey);
   }
 
   static diverging_orange_violet() {
-    return d3.scale.linear().range(palette_diverging_orange_violet);
+    return d3.scale.quantile().range(paletteDivergingOrangeViolet);
   }
 
   static diverging_purple_green() {
-    return d3.scale.linear().range(palette_diverging_purple_green);
+    return d3.scale.quantile().range(paletteDivergingPurpleGreen);
   }
 
   static diverging_violet_green() {
-    return d3.scale.linear().range(palette_diverging_violet_green);
+    return d3.scale.quantile().range(paletteDivergingVioletGreen);
   }
 
   static diverging_red_green() {
-    return d3.scale.linear().range(palette_diverging_red_green);
+    return d3.scale.quantile().range(paletteDivergingRedGreen);
   }
 
   static diverging_brown_green() {
-    return d3.scale.linear().range(palette_diverging_brown_green);
+    return d3.scale.quantile().range(paletteDivergingBrownGreen);
   }
 
   static diverging_lightBrown_turquoise() {
-    return d3.scale.linear().range(palette_diverging_lightBrown_turquoise);
+    return d3.scale.quantile().range(palette_divergingLightBrownTurquoise);
   }
 }
 
@@ -172,7 +172,7 @@ class Colors {
  * List of color palettes
  */
 
-const palette_category1 = [
+const paletteCategory1 = [
   '#e1c8df',
   '#9ecd9d',
   '#acd9d6',
@@ -184,7 +184,7 @@ const palette_category1 = [
   '#acd9d6'
 ];
 
-const palette_category2 = [
+const paletteCategory2 = [
   '#b6dde2',
   '#6394af',
   '#e4e9ab',
@@ -196,7 +196,7 @@ const palette_category2 = [
   '#8d7e9e'
 ];
 
-const palette_category3 = [
+const paletteCategory3 = [
   '#6b68a9',
   '#8cc590',
   '#b9487d',
@@ -208,7 +208,7 @@ const palette_category3 = [
   '#d0553c'
 ];
 
-const palette_category4 = [
+const paletteCategory4 = [
   '#f1a30d',
   '#1d4763',
   '#84c7bc',
@@ -220,7 +220,7 @@ const palette_category4 = [
   '#87325d'
 ];
 
-const palette_category5 = [
+const paletteCategory5 = [
   '#f1a30d',
   '#0c3183',
   '#acd9d6',
@@ -232,7 +232,7 @@ const palette_category5 = [
   '#f09bbc'
 ];
 
-const palette_category6 = [
+const paletteCategory6 = [
   '#71bbc3',
   '#1d4763',
   '#8fbe46',
@@ -244,7 +244,7 @@ const palette_category6 = [
   '#634484'
 ];
 
-const palette_category7 = [
+const paletteCategory7 = [
   '#ea671e',
   '#684592',
   '#84b92a',
@@ -256,7 +256,7 @@ const palette_category7 = [
   '#775e47'
 ];
 
-const palette_category8 = [
+const paletteCategory8 = [
   '#ebd646',
   '#a50f38',
   '#00a096',
@@ -268,7 +268,7 @@ const palette_category8 = [
   '#7c4d25'
 ];
 
-const palette_sequential_yellow = [
+const paletteSequentialYellow = [
   '#fff1c6',
   '#fee5a7',
   '#fcda87',
@@ -284,7 +284,7 @@ const palette_sequential_yellow = [
   '#49230f'
 ];
 
-const palette_sequential_red_orange = [
+const paletteSequentialRedOrange = [
   '#ffecb8',
   '#fbd68b',
   '#f7bf5e',
@@ -300,7 +300,7 @@ const palette_sequential_red_orange = [
   '#470f0f'
 ];
 
-const palette_sequential_red = [
+const paletteSequentialRed = [
   '#fde4d4',
   '#f1c4af',
   '#f7bf5e',
@@ -316,7 +316,7 @@ const palette_sequential_red = [
   '#470f0f'
 ];
 
-const palette_sequential_pink = [
+const paletteSequentialPink = [
   '#fbe3e3',
   '#f9cfcc',
   '#f0aaa9',
@@ -332,7 +332,7 @@ const palette_sequential_pink = [
   '#420e30'
 ];
 
-const palette_sequential_purple_pink = [
+const paletteSequentialPurplePink = [
   '#f9d8e6',
   '#ebbed7',
   '#dda4c7',
@@ -348,7 +348,7 @@ const palette_sequential_purple_pink = [
   '#2d1c41'
 ];
 
-const palette_sequential_purple = [
+const paletteSequentialPurple = [
   '#f6e8f1',
   '#dcc5de',
   '#c2a3c9',
@@ -364,7 +364,7 @@ const palette_sequential_purple = [
   '#2c1c41'
 ];
 
-const palette_sequential_blue = [
+const paletteSequentialBlue = [
   '#e5f2f9',
   '#d1e5f5',
   '#afd3ed',
@@ -380,7 +380,7 @@ const palette_sequential_blue = [
   '#061020'
 ];
 
-const palette_sequential_lightBlue = [
+const paletteSequentialLightBlue = [
   '#eff8fd',
   '#d9eff6',
   '#c2e5ef',
@@ -396,7 +396,7 @@ const palette_sequential_lightBlue = [
   '#1e2354'
 ];
 
-const palette_sequential_blue_violet = [
+const paletteSequentialBlueViolet = [
   '#edf7e7',
   '#c8e3d2',
   '#91cdbf',
@@ -412,7 +412,7 @@ const palette_sequential_blue_violet = [
   '#0b1a3c'
 ];
 
-const palette_sequential_turquoise = [
+const paletteSequentialTurquoise = [
   '#e2ecf6',
   '#cadfe6',
   '#b1d3d6',
@@ -428,7 +428,7 @@ const palette_sequential_turquoise = [
   '#063b4c'
 ];
 
-const palette_sequential_lightGreen = [
+const paletteSequentialLightGreen = [
   '#faf9de',
   '#e9efc3',
   '#d7e4a7',
@@ -444,7 +444,7 @@ const palette_sequential_lightGreen = [
   '#074d21'
 ];
 
-const palette_sequential_darkGreen = [
+const paletteSequentialDarkGreen = [
   '#eaf3e5',
   '#c7d5be',
   '#a3ba9a',
@@ -460,7 +460,7 @@ const palette_sequential_darkGreen = [
   '#052613'
 ];
 
-const palette_sequential_green_brown = [
+const paletteSequentialGreenBrown = [
   '#f7eccd',
   '#d9cba6',
   '#bcad82',
@@ -476,7 +476,7 @@ const palette_sequential_green_brown = [
   '#231a0d'
 ];
 
-const palette_sequential_brown = [
+const paletteSequentialBrown = [
   '#f7eccd',
   '#eed3ab',
   '#e4bb89',
@@ -492,7 +492,7 @@ const palette_sequential_brown = [
   '#29130b'
 ];
 
-const palette_sequential_grey = [
+const paletteSequentialGrey = [
   '#e5e8ea',
   '#bdbfc3',
   '#999a9f',
@@ -508,7 +508,7 @@ const palette_sequential_grey = [
   '#000000'
 ];
 
-const palette_sequential_violet_cb = [
+const paletteSequentialVioletCb = [
   '#f4f3f9',
   '#e0dced',
   '#cbc6e0',
@@ -524,7 +524,7 @@ const palette_sequential_violet_cb = [
   '#2c2a44'
 ];
 
-const palette_sequential_pink_cb = [
+const paletteSequentialPinkCb = [
   '#fbe5ee',
   '#f8ccd5',
   '#f4b2bc',
@@ -540,7 +540,7 @@ const palette_sequential_pink_cb = [
   '#4a1c22'
 ];
 
-const palette_sequential_blue_cb = [
+const paletteSequentialBlueCb = [
   '#eaf6fc',
   '#cfe4f4',
   '#cfe4f4',
@@ -556,7 +556,7 @@ const palette_sequential_blue_cb = [
   '#192d35'
 ];
 
-const palette_sequential_green_cb = [
+const paletteSequentialGreenCb = [
   '#fff7d0',
   '#e9e09b',
   '#d1ca62',
@@ -572,7 +572,7 @@ const palette_sequential_green_cb = [
   '#333413'
 ];
 
-const palette_sequential_green_brown_cb = [
+const paletteSequentialGreenBrownCb = [
   '#f2edde',
   '#d8d1c0',
   '#bfb699',
@@ -588,7 +588,7 @@ const palette_sequential_green_brown_cb = [
   '#191a10'
 ];
 
-const palette_diverging_spectral1 = [
+const paletteDivergingSpectral1 = [
   '#98141f',
   '#ab332c',
   '#bf5040',
@@ -604,7 +604,7 @@ const palette_diverging_spectral1 = [
   '#06456c'
 ];
 
-const palette_diverging_spectral2 = [
+const paletteDivergingSpectral2 = [
   '#d43d4f',
   '#df564b',
   '#eb6d45',
@@ -620,7 +620,7 @@ const palette_diverging_spectral2 = [
   '#3489be'
 ];
 
-const palette_diverging_spectral3 = [
+const paletteDivergingSpectral3 = [
   '#651035',
   '#ae1143',
   '#c9314b',
@@ -636,7 +636,7 @@ const palette_diverging_spectral3 = [
   '#0c2c63'
 ];
 
-const palette_diverging_brown_turquoise = [
+const paletteDivergingBrownTurquoise = [
   '#3f3128',
   '#683828',
   '#933624',
@@ -652,7 +652,7 @@ const palette_diverging_brown_turquoise = [
   '#475b57'
 ];
 
-const palette_diverging_orange_pink = [
+const paletteDivergingOrangePink = [
   '#e7511e',
   '#eb6929',
   '#ee7f37',
@@ -668,7 +668,7 @@ const palette_diverging_orange_pink = [
   '#4b1c47'
 ];
 
-const palette_diverging_red_blue = [
+const paletteDivergingRedBlue = [
   '#b2172b',
   '#c4443e',
   '#d76a5a',
@@ -684,7 +684,7 @@ const palette_diverging_red_blue = [
   '#036896'
 ];
 
-const palette_diverging_red_grey = [
+const paletteDivergingRedGrey = [
   '#b2172b',
   '#c54532',
   '#da6c3b',
@@ -700,7 +700,7 @@ const palette_diverging_red_grey = [
   '#000000'
 ];
 
-const palette_diverging_orange_violet = [
+const paletteDivergingOrangeViolet = [
   '#98141f',
   '#ab332c',
   '#f9bc47',
@@ -716,7 +716,7 @@ const palette_diverging_orange_violet = [
   '#402357'
 ];
 
-const palette_diverging_purple_green = [
+const paletteDivergingPurpleGreen = [
   '#59194b',
   '#85134b',
   '#c71360',
@@ -732,7 +732,7 @@ const palette_diverging_purple_green = [
   '#39521f'
 ];
 
-const palette_diverging_violet_green = [
+const paletteDivergingVioletGreen = [
   '#55296e',
   '#75408e',
   '#8a5fa0',
@@ -748,7 +748,7 @@ const palette_diverging_violet_green = [
   '#084a22'
 ];
 
-const palette_diverging_red_green = [
+const paletteDivergingRedGreen = [
   '#b2172b',
   '#c5403c',
   '#d96453',
@@ -764,7 +764,7 @@ const palette_diverging_red_green = [
   '#39521f'
 ];
 
-const palette_diverging_brown_green = [
+const paletteDivergingBrownGreen = [
   '#735146',
   '#846454',
   '#977a65',
@@ -780,7 +780,7 @@ const palette_diverging_brown_green = [
   '#084a22'
 ];
 
-const palette_diverging_lightBrown_turquoise = [
+const palette_divergingLightBrownTurquoise = [
   '#8b5219',
   '#a46821',
   '#bf812c',

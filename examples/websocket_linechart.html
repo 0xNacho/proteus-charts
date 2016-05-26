@@ -7,7 +7,9 @@
 <!--<![endif]-->
 
 <head>
-    <style> </style>
+    <style>
+
+    </style>
 </head>
 
 <body>
@@ -15,11 +17,16 @@
 
     <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
     <script src='../node_modules/d3/d3.min.js'></script>
+    <script src='../node_modules/d3-tip/index.js'></script>
     <script src='../src/utils/functions.js'></script>
     <script src='../src/utils/image.js'></script>
     <script src='../src/utils/strategies.js'></script>
     <script src='../src/utils/colors.js'></script>
     <script src='../src/utils/globals.js'></script>
+    <script src='../src/utils/ProteusEvent.js'></script>
+    <script src='../src/datasources/Datasource.js'></script>
+
+    <script src='../src/datasources/WebsocketDatasource.js'></script>
     <script src='../src/svg/SvgStrategy.js'></script>
     <script src='../src/svg/svg.js'></script>
 
@@ -30,12 +37,14 @@
     <script>
         var data = {
             endpoint: 'ws://localhost:3000/socket.io/?EIO=3&transport=websocket'
+            //endpoint: 'ws://localhost:8787/websocket'
           };
+     var dataSource = new WebsocketDatasource(data);
           //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
           //Chart uses #chart selector by default
-          linechart = new Linechart(data);
+          linechart = new Linechart(dataSource);
           //Start streaming
-          linechart.start()
+          dataSource.start()
     </script>
 </body>
 

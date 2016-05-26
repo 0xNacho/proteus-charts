@@ -1,0 +1,67 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>         <html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>         <html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class='no-js' lang=''>
+<!--<![endif]-->
+
+<head>
+    <meta charset="utf-8" />
+    <title>Multi barchart</title>
+</head>
+
+<body>
+
+    <div style id='chart'></div>
+
+    <script src='//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
+    <script src='../node_modules/d3/d3.min.js'></script>
+    <script src='../node_modules/d3-tip/index.js'></script>
+    <script src='../src/utils/functions.js'></script>
+    <script src='../src/utils/image.js'></script>
+    <script src='../src/utils/strategies.js'></script>
+    <script src='../src/utils/colors.js'></script>
+    <script src='../src/utils/globals.js'></script>
+    <script src='../src/utils/ProteusEvent.js'></script>
+
+    <script src='../src/svg/SvgStrategy.js'></script>
+    <script src='../src/svg/svg.js'></script>
+    <script src='../src/svg/strategy_barchart.js'></script>
+    <script src='../src/charts/classes.js' type='text/javascript'></script>
+    <script src='../src/charts/barchart.js' type='text/javascript'></script>
+
+    <script>
+        var data = [
+                {
+                  key: '2005',
+                  values: [
+                    {x:"España", y:3},  
+                    {x:"Francia", y:12},
+                    {x:"UK", y:21},
+                  ]
+                },
+                                {
+                  key: '2012',
+                  values: [
+                    {x:"España", y:9},  
+                    {x:"Francia", y:20},
+                    {x:"UK", y:20},
+                  ]
+                },
+                                {
+                  key: '2016',
+                  values: [
+                    {x:"España", y:12},  
+                    {x:"Francia", y:11},
+                    {x:"UK", y:32},
+                  ]
+                }
+            ];
+            //Default config uses #chart selector
+            barchart = new Barchart(data);
+            barchart.draw();
+    </script>
+</body>
+
+</html>

@@ -1,3 +1,15 @@
 {
-  "esversion": 6
+  "esversion": 6,
+  // Ignore errors about undefined global variables until browsers implement modules
+  "globals": {
+    "d3": false,
+    "SvgStrategy": false,
+    "Basic": false,
+    "Reactor": false,
+    "_default": false,
+    "strategies": false,
+    "utils": false,
+    "console": false,
+    "CustomEvent": false
+  }
 }
