@@ -46,11 +46,13 @@ gulp.task('concat', ['babel'], () => {
     './lib/svg/strategy_linechart.js',
     './lib/svg/strategy_streamgraph.js',
     './lib/svg/strategy_gauge.js',
+    './lib/svg/strategy_sunburst.js',
     './lib/charts/classes.js',
     './lib/charts/barchart.js',
     './lib/charts/linechart.js',
     './lib/charts/streamgraph.js',
     './lib/charts/gauge.js',
+    './lib/charts/sunburst.js',
     './lib/utils/factory.js'
   ])
     .pipe(concat(libname + '.js'))

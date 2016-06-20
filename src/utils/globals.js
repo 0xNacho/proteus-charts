@@ -72,6 +72,20 @@ const _default = {
   },
   Linechart: {
     selector: '#chart',
+    width: '100%', // %, auto, or numeric
+    height: 250,
+    margin: {
+      top: 20,
+      right: 20,
+      bottom: 30,
+      left: 50
+    },
+    colorScale: Colors.category7(),
+    area: false,
+    areaOpacity: 0.4,
+    maxNumberOfElements: 10, // used by keepDrawing to reduce the number of elements in the current chart
+    transitionDuration: 300,
+    tickLabel: '',
     xaxis: {
       label: 'X',
       ticks: 5
@@ -80,17 +94,6 @@ const _default = {
       label: 'Y',
       ticks: 5
     },
-    colorScale: Colors.category7(),
-    area: false,
-    areaOpacity: 0.4,
-    margin: {
-      top: 20,
-      right: 20,
-      bottom: 30,
-      left: 50
-    },
-    width: '100%', // %, auto, or numeric 
-    height: 250,
     style: {
       '.line': {
         'stroke-width': 2,
@@ -122,7 +125,8 @@ const _default = {
       outlineWidth: 2
     },
     tooltip(data) {
-      return JSON.stringify(data);
+      return '<b>X axis</b>: ' + data.x + '<br/>' +
+        '<b>Y axis</b>: ' + data.y;
     },
     events: {
       down() {
@@ -146,9 +150,6 @@ const _default = {
         console.log(d, i);
       }
     },
-    tickLabel: '',
-    transitionDuration: 300,
-    maxNumberOfElements: 10, // used by keepDrawing to reduce the number of elements in the current chart
     sortData: {
       descending: false,
       prop: 'x'
@@ -282,6 +283,73 @@ const _default = {
           .duration(50)
           .attr('r', 7)
           ;
+      },
+      leave() {
+        d3.select(this)
+          .transition()
+          .duration(50)
+          .attr('r', 5)
+          .style('stroke-width', 2);
+      },
+      click(d, i) {
+        console.log(d, i);
+      }
+    },
+    tickLabel: '',
+    transitionDuration: 300,
+    maxNumberOfElements: 5, // used by keepDrawing to reduce the number of elements in the current chart
+    sortData: {
+      descending: false,
+      prop: 'x'
+    }
+  },
+  Sunburst: {
+    selector: '#chart',
+    colorScale: Colors.category8(),
+    margin: {
+      top: 20,
+      right: 20,
+      bottom: 30,
+      left: 50
+    },
+    width: '50%', // %, auto, or numeric
+    height: 450,
+    style: {
+      '.labels': {
+        'font': '18px sans-serif',
+        'text-anchor': 'middle'
+      },
+      'path': {
+        'stroke': '#fff',
+        'stroke-width': 2,
+        'shape-rendering': 'crispEdge'
+      },
+      '.infobox': {
+        'text-anchor': 'middle',
+        'alignment-baseline': 'central',
+        'fill': 'black'
+      },
+      '.infobox .name': {
+        'font': '28px sans-serif'
+      },
+      '.infobox .value': {
+        'font': '24px sans-serif',
+        'transform': 'translate(0, 1.5em)'
+      }
+    },
+    tooltip(data) {
+      return data.name + ': ' + data.value;
+    },
+    events: {
+      down() {
+        d3.select(this).classed('hover', false);
+      },
+      over() {
+        d3.select(this)
+          .transition()
+          .duration(50)
+          .attr('r', 7)
+        ;
       },
       leave() {
         d3.select(this)
