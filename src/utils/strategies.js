@@ -10,8 +10,5 @@ const strategies = {
   },
   Gauge(chartContext) {
     return new SvgGaugeStrategy(chartContext);
-  },
-  Sunburst(chartContext) {
-    return new SvgSunburstStrategy(chartContext)
   }
 };

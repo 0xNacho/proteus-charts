@@ -243,23 +243,3 @@ class Flow extends Chart {
     super.draw(data);
   }
 }
-
-class Hierarchical extends Chart {
-  constructor() {
-    super();
-    this.reactor = new Reactor();
-
-  }
-
-  /**
-   * Renders data on barchart. Only allowed when data is an array of static data.
-   * @param  {Array} data Array of data
-   */
-  draw(data = this.data) {
-    // if (!utils.isArray(data)) {
-    //   throw new TypeError('draw method is only allowed with static data.');
-    // }
-    data = JSON.parse(JSON.stringify(data));
-    this._svg.draw(data);
-  }
-}
