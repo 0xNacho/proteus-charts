@@ -1,0 +1,34 @@
+@import "colors";
+
+.proteic {
+  .x.axis {
+
+    path {
+      stroke: $structure-color-bright;
+      stroke-width: $y-axis-line-width;
+      opacity: 1;
+    }
+
+    line {
+      stroke-dasharray: $grid-v-dasharray;
+    }
+
+    .tick:nth-of-type(even) {
+      line {
+        stroke: $structure-color-dark;
+      }
+      text {
+        fill: $font-color-dark;
+      }
+    }
+  }
+
+  .x.axis.linear .tick:nth-of-type(odd) {
+    text {
+      fill: $font-color-bright;
+    }
+    line {
+      stroke: $structure-color-bright;
+    }
+  }
+}

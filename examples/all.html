@@ -1,0 +1,571 @@
+<!doctype html>
+<!--[if lt IE 7]>
+<html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>
+<html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>
+<html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class='no-js' lang=''>
+<!--<![endif]-->
+
+<head>
+    <title>Multiseries Barchart</title>
+    <script src='../node_modules/d3/build/d3.min.js'></script>
+    <script src='../dist/proteic.js'></script>
+    <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.2.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../dist/proteic.css">
+</head>
+
+
+<body>
+
+    <section class="hero is-primary is-bold">
+        <div class="hero-body">
+            <div class="container has-text-centered">
+                <div class="colums">
+                    <div class="column ">
+                        <h1 class="title">
+                            Proteic.js
+                        </h1>
+                    </div>
+                    <div class="column">
+                        <h2 class="subtitle">
+                            Visualization sowcase
+                        </h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-foot">
+            <nav class="tabs">
+                <div class="container">
+                    <ul>
+                        <li><a href="#areas">Areas</a></li>
+                        <li><a href="#bars">Barchart</a></li>
+                        <li><a href="#gauge">Gauge</a></li>
+                        <li><a href="#lines">Linechart</a></li>
+                        <li><a href="#scatterplot">Scatterplot</a></li>
+                        <li><a href="#streamgraph">Streamgraph</a></li>
+                        <li><a href="#network">Network</a></li>
+                        <li><a href="#sunburst">Sunburst</a></li>
+                        <li><a href="#swimlane">Swimlane</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Areas</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='areas'></div>
+            </div>
+            <div class="column">
+                <div id='areas-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Barchart</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='bars'></div>
+            </div>
+            <div class="column">
+                <div id='barsStacked'></div>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column">
+                <div id='bars-ws'></div>
+            </div>
+            <div class="column">
+                <div id='barsStacked-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Gauge</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='gauge'></div>
+            </div>
+            <div class="column">
+                <div id='gauge-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Linechart</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='lines'></div>
+            </div>
+            <div class="column">
+                <div id='linesAreas'></div>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column">
+                <div id='lines-ws'></div>
+            </div>
+            <div class="column">
+                <div id='linesAreas-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Scatterplot</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='scatterplot'></div>
+            </div>
+            <div class="column">
+                <div id='scatterplotCanvas'></div>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column">
+                <div id='scatterplot-ws'></div>
+            </div>
+            <div class="column">
+                <div id='scatterplotCanvas-ws'></div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="section">
+        <h2 class="title is-2">Streamgraph</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='streamgraph'></div>
+            </div>
+            <div class="column">
+                <div id='streamgraph-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Network</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='network'></div>
+            </div>
+            <div class="column">
+                <div id='network-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Sunburst</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='sunburst'></div>
+            </div>
+            <div class="column">
+                <div id='sunburst-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="title is-2">Swimlane</h2>
+        <div class="columns">
+            <div class="column">
+                <div id='swimlane'></div>
+            </div>
+            <div class="column">
+                <div id='swimlane-ws'></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="content has-text-centered">
+                <p>PROTEUS H2020</p>
+                <a class="icon" href="https://github.com/proteus-h2020/">
+                    <i class="fa fa-github"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    var data = [
+        {key: 'serie1', x: 1, y: 5},
+        {key: 'serie1', x: 2, y: 15},
+        {key: 'serie1', x: 3, y: 35},
+        {key: 'serie1', x: 4, y: 25},
+        {key: 'serie1', x: 5, y: 12},
+        {key: 'serie1', x: 6, y: 0},
+        {key: 'serie1', x: 7, y: 21},
+        {key: 'serie1', x: 8, y: 0},
+        {key: 'serie2', x: 1, y: 4},
+        {key: 'serie2', x: 2, y: 4},
+        {key: 'serie2', x: 3, y: 20},
+        {key: 'serie2', x: 7, y: 12},
+        {key: 'serie2', x: 5, y: 14},
+        {key: 'serie2', x: 6, y: 9},
+        {key: 'serie2', x: 4, y: 12},
+        {key: 'serie2', x: 8, y: 13}
+    ];
+
+    var dataTemporal = [
+        {'key': 'ES', x: '01/08/13', y: 30},
+        {'key': 'UK', x: '01/08/13', y: 40},
+        {'key': 'ES', x: '01/09/13', y: 10},
+        {'key': 'UK', x: '01/09/13', y: 10},
+        {'key': 'ES', x: '01/10/13', y: 70},
+        {'key': 'UK', x: '01/10/13', y: 30},
+        {'key': 'ES', x: '01/11/13', y: 50},
+        {'key': 'UK', x: '01/11/13', y: 50},
+        {'key': 'ES', x: '01/12/13', y: 25},
+        {'key': 'UK', x: '01/12/13', y: 75},
+        {'key': 'ES', x: '01/13/13', y: 80},
+        {'key': 'UK', x: '01/13/13', y: 20},
+        {'key': 'ES', x: '01/14/13', y: 90},
+        {'key': 'UK', x: '01/14/13', y: 10}
+    ];
+
+    var dataGrouped = [
+        {x: 'SP', key: '- 18', y: 30},
+        {x: 'SP', key: '+ 18 - 35', y: 25},
+        {x: 'SP', key: '+ 35', y: 45},
+
+        {x: 'FR', key: '- 18', y: 10},
+        {x: 'FR', key: '+ 18 - 35', y: 50},
+        {x: 'FR', key: '+ 35', y: 40},
+
+        {x: 'BR', key: '- 18', y: 20},
+        {x: 'BR', key: '+ 18 - 35', y: 40},
+        {x: 'BR', key: '+ 35', y: 40}
+    ];
+
+    var dataHierarchic = [
+        {"id": "root", "parent": "", "value": "0", "label": "sequences"},
+        {"id": "1", "parent": "root", "value": "50", "label": "home"},
+        {"id": "2", "parent": "root", "value": "0", "label": "about"},
+        {"id": "2.1", "parent": "2", "value": "25", "label": "contact"},
+        {"id": "3", "parent": "root", "value": "0", "label": "product"},
+        {"id": "3.1", "parent": "3", "value": "0", "label": "product"},
+        {"id": "3.1.1", "parent": "3.1", "value": "25", "label": "cart"}
+    ];
+
+    var dataLanes = [
+        {key: 'Lane1', start: "2012-01-01", end: "2012-01-03"},
+        {key: 'Lane1', start: "2012-01-05", end: "2012-01-10"},
+        {key: 'Lane1', start: "2012-01-12", end: "2012-01-15"},
+        {key: 'Lane1', start: "2012-01-16", end: "2012-01-20"},
+
+        {key: 'Lane2', start: "2012-01-01", end: "2012-01-03"},
+        {key: 'Lane2', start: "2012-01-05", end: "2012-01-10"},
+        {key: 'Lane2', start: "2012-01-12", end: "2012-01-12"},
+        {key: 'Lane2', start: "2012-01-13", end: "2012-01-20"},
+
+        {key: 'Lane3', start: "2012-01-01", end: "2012-01-01"},
+        {key: 'Lane3', start: "2012-01-02", end: "2012-01-03"},
+        {key: 'Lane3', start: "2012-01-05", end: "2012-01-08"},
+        {key: 'Lane3', start: "2012-01-10", end: "2012-01-20"},
+
+        {key: 'Lane4', start: "2012-01-01", end: "2012-01-01"},
+        {key: 'Lane4', start: "2012-01-03", end: "2012-01-03"},
+        {key: 'Lane4', start: "2012-01-04", end: "2012-01-04"},
+        {key: 'Lane4', start: "2012-01-12", end: "2012-01-15"},
+
+        {key: 'Lane5', start: "2012-01-01", end: "2012-01-03"},
+        {key: 'Lane5', start: "2012-01-05", end: "2012-01-10"},
+        {key: 'Lane5', start: "2012-01-12", end: "2012-01-15"},
+        {key: 'Lane5', start: "2012-01-16", end: "2012-01-20"},
+
+        {key: 'Lane6', start: "2012-01-01", end: "2012-01-03"},
+        {key: 'Lane6', start: "2012-01-05", end: "2012-01-10"},
+        {key: 'Lane6', start: "2012-01-12", end: "2012-01-15"},
+        {key: 'Lane6', start: "2012-01-16", end: "2012-01-20"},
+
+        {key: 'Lane7', start: "2012-01-04", end: "2012-01-04"},
+        {key: 'Lane7', start: "2012-01-10", end: "2012-01-10"},
+        {key: 'Lane7', start: "2012-01-10", end: "2012-01-15"},
+        {key: 'Lane7', start: "2012-01-16", end: "2012-01-20"}
+    ];
+
+           var dataNetwork = [
+    {"class": "node", "id": "Myriel", "key": 1, "weight": 25},
+    {"class": "node", "id": "Napoleon", "key": 1, "weight": 50},
+    {"class": "node", "id": "Mlle.Baptistine", "key": 1, "weight": 35},
+    {"class": "node", "id": "Mme.Magloire", "key": 1, "weight": 100},
+    {"class": "node", "id": "CountessdeLo", "key": 1, "weight": 10},
+    {"class": "node", "id": "Geborand", "key": 1, "weight": 50},
+    {"class": "node", "id": "Champtercier", "key": 1, "weight": 75},
+    {"class": "node", "id": "Cravatte", "key": 1, "weight": 75},
+    {"class": "node", "id": "Count", "key": 1, "weight": 75},
+    {"class": "node", "id": "OldMan", "key": 1, "weight": 75},
+    {"class": "node", "id": "Labarre", "key": 2, "weight": 75},
+    {"class": "node", "id": "Valjean", "key": 2, "weight": 75},
+    {"class": "node", "id": "Marguerite", "key": 3, "weight": 75},
+    {"class": "node", "id": "Mme.deR", "key": 2, "weight": 75},
+    {"class": "node", "id": "Isabeau", "key": 2, "weight": 75},
+    {"class": "node", "id": "Gervais", "key": 2, "weight": 75},
+    {"class": "node", "id": "Tholomyes", "key": 3, "weight": 75},
+    {"class": "node", "id": "Listolier", "key": 3, "weight": 75},
+    {"class": "node", "id": "Fameuil", "key": 3, "weight": 75},
+    {"class": "node", "id": "Blacheville", "key": 3, "weight": 75},
+    {"class": "node", "id": "Favourite", "key": 3, "weight": 75},
+    {"class": "node", "id": "Dahlia", "key": 3, "weight": 75},
+
+    {"class": "link", "source": "Napoleon", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Mlle.Baptistine", "target": "Myriel", "weight": 8},
+    {"class": "link", "source": "Mme.Magloire", "target": "Myriel", "weight": 10},
+    {"class": "link", "source": "Mme.Magloire", "target": "Mlle.Baptistine", "weight": 6},
+    {"class": "link", "source": "CountessdeLo", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Geborand", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Champtercier", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Cravatte", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Count", "target": "Myriel", "weight": 2},
+    {"class": "link", "source": "OldMan", "target": "Myriel", "weight": 1},
+    {"class": "link", "source": "Valjean", "target": "Labarre", "weight": 1},
+    {"class": "link", "source": "Valjean", "target": "Mme.Magloire", "weight": 3},
+    {"class": "link", "source": "Valjean", "target": "Mlle.Baptistine", "weight": 3},
+    {"class": "link", "source": "Valjean", "target": "Myriel", "weight": 5},
+    {"class": "link", "source": "Marguerite", "target": "Valjean", "weight": 1},
+    {"class": "link", "source": "Mme.deR", "target": "Valjean", "weight": 1},
+    {"class": "link", "source": "Isabeau", "target": "Valjean", "weight": 1},
+    {"class": "link", "source": "Gervais", "target": "Valjean", "weight": 1},
+    {"class": "link", "source": "Listolier", "target": "Tholomyes", "weight": 4},
+    {"class": "link", "source": "Fameuil", "target": "Tholomyes", "weight": 4},
+    {"class": "link", "source": "Fameuil", "target": "Listolier", "weight": 4},
+    {"class": "link", "source": "Blacheville", "target": "Tholomyes", "weight": 4},
+    {"class": "link", "source": "Blacheville", "target": "Listolier", "weight": 4},
+    {"class": "link", "source": "Blacheville", "target": "Fameuil", "weight": 4},
+    {"class": "link", "source": "Favourite", "target": "Tholomyes", "weight": 3},
+    {"class": "link", "source": "Favourite", "target": "Listolier", "weight": 3},
+    {"class": "link", "source": "Favourite", "target": "Fameuil", "weight": 3},
+    {"class": "link", "source": "Favourite", "target": "Blacheville", "weight": 4},
+    {"class": "link", "source": "Dahlia", "target": "Tholomyes", "weight": 3},
+    
+    {"class": "link", "source": "Tholomyes", "target": "Mlle.Baptistine", "weight": 3},
+
+    {"class": "link", "source": "Dahlia", "target": "Listolier", "weight": 3},
+    {"class": "link", "source": "Dahlia", "target": "Fameuil", "weight": 3},
+    {"class": "link", "source": "Dahlia", "target": "Blacheville", "weight": 3}
+    ];
+
+    var areas = new proteic.StackedArea(dataTemporal, {
+        selector: '#areas',
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    areas.draw();
+    var dsAreas = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/streamgraph'
+    });
+    new proteic.StackedArea([], {
+        selector: '#areas-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsAreas);
+    dsAreas.start();
+
+    var bars = new proteic.Barchart(dataGrouped, {
+        selector: '#bars', height: 200, width: '100%', marginRight: 100, marginLeft: 50
+    });
+    bars.draw();
+    var barsStacked = new proteic.Barchart(dataGrouped, {
+        selector: '#barsStacked',
+        stacked: true,
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    barsStacked.draw();
+    var dsBars = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/barchart'
+    });
+    new proteic.Barchart([], {
+        selector: '#bars-ws',
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsBars);
+    dsBars.start();
+    //	var dsBarsStacked = new proteic.WebsocketDatasource({
+    //		endpoint: 'wss://proteicws.herokuapp.com/barchart'
+    //	});
+    //	new proteic.Barchart([], {selector: '#barsStacked-ws', stacked: true}).datasource(dsBars);
+    //	dsBarsStacked.start();
+
+
+    var gauge = new proteic.Gauge([{value: 30}], {selector: '#gauge', height: 200, width: '100%'});
+    gauge.draw();
+    var dsGauge = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/gauge'
+    });
+    new proteic.Gauge([], {
+        selector: '#gauge-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 10
+    }).datasource(dsGauge);
+    dsGauge.start();
+
+
+    var lines = new proteic.Linechart(data, {
+        selector: '#lines', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    lines.draw();
+    var linesAreas = new proteic.Linechart(data, {
+        selector: '#linesAreas',
+        areaOpacity: 0.4,
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    linesAreas.draw();
+    var dsLines = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/linechart'
+    });
+    new proteic.Linechart([], {
+        selector: '#lines-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsLines);
+    dsLines.start();
+    var dsLinesAreas = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/linechart'
+    });
+    new proteic.Linechart([], {
+        selector: '#linesAreas-ws',
+        areaOpacity: 0.4,
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsLinesAreas);
+    dsLinesAreas.start();
+
+
+     var network =  new proteic.Network(dataNetwork, {
+         selector: '#network',
+        width: '100%',
+        height: 200,
+        linkWeght: 0.4,
+        nodeWeight: 5,
+        labelField: 'class',
+      });
+
+      network.draw();
+
+
+
+
+    var scatterplot = new proteic.Scatterplot(data, {
+        selector: '#scatterplot',
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    scatterplot.draw();
+    var scatterplotCanvas = new proteic.Scatterplot(data, {
+        selector: '#scatterplotCanvas',
+        canvas: true,
+        height: 200,
+        width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    scatterplotCanvas.draw();
+    var dsScatterplot = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/scatterplot'
+    });
+    new proteic.Scatterplot([], {
+        selector: '#scatterplot-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsScatterplot);
+    dsScatterplot.start();
+    var dsScatterplotCanvas = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/scatterplot'
+    });
+    new proteic.Scatterplot([], {
+        selector: '#scatterplotCanvas-ws',
+        canvas: true,
+        marginRight: 100,
+        marginLeft: 50,
+        height: 200,
+        width: '100%'
+    }).datasource(dsScatterplotCanvas);
+    dsScatterplotCanvas.start();
+    var streamgraph = new proteic.Streamgraph(dataTemporal, {
+        selector: '#streamgraph', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    streamgraph.draw();
+    var dsStreamgraph = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/streamgraph'
+    });
+    new proteic.Streamgraph([], {
+        selector: '#streamgraph-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsStreamgraph);
+    dsStreamgraph.start();
+
+
+    var sunburst = new proteic.Sunburst(dataHierarchic, {
+        selector: '#sunburst', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    });
+    sunburst.draw();
+    var dsSunburst = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/sunburst'
+    });
+    new proteic.Sunburst([], {
+        selector: '#sunburst-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 50
+    }).datasource(dsSunburst);
+    dsSunburst.start();
+
+
+    var swimlane = new proteic.Swimlane(dataLanes, {
+        selector: '#swimlane', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 70
+    });
+    swimlane.draw();
+    var dsSwimlane = new proteic.WebsocketDatasource({
+        endpoint: 'wss://proteicws.herokuapp.com/swimlane'
+    });
+    new proteic.Swimlane([], {
+        selector: '#swimlane-ws', height: 200, width: '100%',
+        marginRight: 100,
+        marginLeft: 70
+    }).datasource(dsSwimlane);
+    dsSwimlane.start();
+
+
+</script>
+</body>
+
+</html>

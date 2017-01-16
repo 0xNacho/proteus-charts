@@ -11,10 +11,14 @@
 	<script src='../node_modules/d3/build/d3.min.js'></script>
 	<script src='../dist/proteic.js'></script>
 	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+	<link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
+<h2>SVG</h2>
 <div id='chart'></div>
+<h2>Canvas</h2>
+<div id='chart2'></div>
 
 <script>
 	var data = [
@@ -170,8 +174,22 @@
 		{ "x": "5.9", "y": "3.0", "key": "virginica" }
 	];
 
-	var chart = new proteic.Scatterplot(data);
+	var chart = new proteic.Scatterplot(data,{
+		xAxisLabel:'Sepal length (cm)',
+		yAxisLabel:'Sepal width (cm)',
+		markerShape: 'triangle',
+		onClick: (d) => window.console.log(d)
+	});
 	chart.draw();
+
+	var chart2 = new proteic.Scatterplot(data ,{
+				selector: '#chart2',
+				canvas: true,
+				xAxisLabel:'Sepal length (cm)',
+				yAxisLabel:'Sepal width (cm)',
+				onClick: (d) => window.console.log(d)
+	});
+	chart2.draw();
 
 </script>
 </body>

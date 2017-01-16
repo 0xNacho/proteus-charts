@@ -11,6 +11,7 @@
 	<script src='../node_modules/d3/build/d3.min.js'></script>
 	<script src='../dist/proteic.js'></script>
 	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+	<link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
@@ -41,7 +42,9 @@
 
     areaLinechart = new proteic.Linechart(dataArea, {
         selector: '#chart',
-        area: true,
+        areaOpacity: 0.1,
+        markerSize:0,
+        markerShape: 'dot',
         width: '90%',
         height: 400,
         onClick: (d) => console.log('clicking', d),

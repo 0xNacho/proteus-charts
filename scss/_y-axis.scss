@@ -1,0 +1,31 @@
+@import "colors";
+
+.proteic .y.axis path {
+  display: none;
+}
+
+.proteic .y.axis .tick:nth-child(even) line {
+  stroke: $structure-color-dark;
+}
+
+.proteic .y.axis .tick:nth-child(even) text {
+  fill: $font-color-dark;
+}
+
+.proteic .y.axis .tick:nth-child(odd) text {
+  fill: $font-color-bright;
+}
+
+.proteic .y.axis .tick:nth-child(odd) line {
+  stroke: $structure-color-bright;
+}
+
+.proteic .y.axis .tick line {
+  stroke-dasharray: $grid-h-dasharray;
+}
+
+//.proteic .y.axis .tick:nth-of-type(1) line {
+//  stroke: $structure-color-bright;
+//  stroke-width: $y-axis-line-width;
+//  /*display: none;*/
+//}

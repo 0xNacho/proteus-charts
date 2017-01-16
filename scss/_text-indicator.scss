@@ -1,0 +1,16 @@
+@import "fonts";
+
+$value-text: 2em $font-main, sans-serif;
+$label-text: 1em $font-main, sans-serif;
+
+.text-indicator {
+  white-space: nowrap;
+  overflow: hidden;
+  .value {
+    font: $value-text;
+  }
+  .label {
+    font: $label-text;
+    text-overflow: ellipsis;
+  }
+}

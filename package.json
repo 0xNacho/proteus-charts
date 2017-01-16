@@ -1,6 +1,6 @@
 {
   "name": "proteic",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "homepage": "http://proteic.js.org/",
   "main": "dist/proteic.node.js",
@@ -12,11 +12,11 @@
     "pretest": "npm run build",
     "test": "karma start -c karma.conf.js",
     "prebuild": "rimraf dist/*",
-    "build": "rollup -c rollup.config.js",
+    "build": "rollup -c rollup.config.js && uglifyjs dist/proteic.js -c negate_iife=false -o dist/proteic.min.js && node rollup.config.node.js && node-sass scss/proteic.scss dist/proteic.css",
     "docs": "esdoc -c esdoc.json",
     "serve": "live-server",
-    "serve:watch": "parallelshell \"npm run serve\" \"watch 'npm run build' src/ \"",
-    "prepublish": "npm run build && uglifyjs dist/proteic.js -c negate_iife=false -o dist/proteic.min.js && node rollup.config.node.js"
+    "serve:watch": "parallelshell \"npm run serve\" \"watch 'npm run build' src/ scss/\"",
+    "prepublish": "npm run build && node rollup.config.node.js"
   },
   "keywords": [
     "d3",
@@ -48,9 +48,10 @@
     "url": "https://github.com/proteus-h2020/proteic/issues"
   },
   "dependencies": {
-    "d3": "^4.2.7"
+    "d3": "^4.3.0"
   },
   "devDependencies": {
+    "@types/d3": "^4.3.0",
     "chai": "^3.5.0",
     "chai-as-promised": "^5.3.0",
     "codecov": "^1.0.1",
@@ -64,6 +65,7 @@
     "karma-rollup-plugin": "^0.2.4",
     "live-server": "^1.1.0",
     "mocha": "^2.4.5",
+    "node-sass": "^3.13.0",
     "parallelshell": "^2.0.0",
     "protractor": "^3.3.0",
     "rimraf": "^2.5.4",
@@ -71,7 +73,9 @@
     "rollup-plugin-commonjs": "^5.0.4",
     "rollup-plugin-istanbul": "^1.1.0",
     "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-typescript": "^0.8.1",
     "socket.io": "^1.4.5",
+    "typescript": "^2.0.8",
     "uglify-js": "^2.7.4",
     "watch": "^0.19.2"
   }

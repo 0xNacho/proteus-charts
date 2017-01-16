@@ -14,6 +14,7 @@
         <script src='../dist/proteic.js'></script>
         <meta charset="utf-8" />
         <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+        <link rel="stylesheet" href="../dist/proteic.css">
     </head>
 
     <body>
@@ -23,17 +24,19 @@
                 url: 'https://randomuser.me/api',
                 pollingTime: 3000
             };
-     var dataSource = new proteic.HTTPDatasource(data);
+     var ds = new proteic.HTTPDatasource(data);
           //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
           //Chart uses #chart selector by default
-          linechart = new proteic.Linechart(dataSource,{
+          linechart = new proteic.Linechart([],{
              xAxisType: 'time',
              xAxisFormat: '%Y-%m-%d %H:%M:%S',
              areaOpacity: 0,
              markerSize: 0
           });
+          
+          linechart.datasource(ds);
           //Start streaming
-          dataSource
+          ds
             .property('x', 'results[0].registered')
             .property('y', 'results[0].location.postcode')
             .property('key', 'results[0].gender')

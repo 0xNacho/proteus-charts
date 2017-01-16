@@ -2,19 +2,802 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var d3$1 = require('d3');
+var d3 = require('d3');
 
-var paletteCategory1 = [
-    '#e1c8df',
-    '#9ecd9d',
-    '#acd9d6',
-    '#e4e36b',
-    '#bfa1c5',
-    '#e4d3b8',
-    '#facba8',
-    '#ced4ea',
-    '#acd9d6'
-];
+function __extends(d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+}
+
+var SvgContext = (function () {
+    function SvgContext(strategy, config) {
+        this.strategy = strategy;
+        this.strategy.setConfig(config);
+        this.strategy.initialize();
+    }
+    SvgContext.prototype.draw = function (data) {
+        this.strategy.draw(data);
+    };
+    SvgContext.prototype.addLoading = function () {
+        this.strategy.addLoading();
+    };
+    SvgContext.prototype.removeLoading = function () {
+        this.strategy.removeLoading();
+    };
+    return SvgContext;
+}());
+
+var Config = (function () {
+    function Config() {
+        this.properties = {};
+    }
+    Config.prototype.put = function (key, value) {
+        this.properties[key] = value;
+        return this;
+    };
+    Config.prototype.get = function (key) {
+        return this.properties[key];
+    };
+    return Config;
+}());
+
+function isNumeric(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+function isPercentage(n) {
+    var split = null;
+    var number = null;
+    if (!n || typeof n !== 'string') {
+        return false;
+    }
+    split = n.split('%');
+    number = (+split[0]);
+    return split.length === 2 &&
+        (number >= 0) &&
+        (number <= 100);
+}
+
+
+
+function copy(object) {
+    return object != null ? JSON.parse(JSON.stringify(object)) : null;
+}
+function deg2rad(deg) {
+    return deg * Math.PI / 180;
+}
+
+function calculateWidth(widthConfig, selector) {
+    if (widthConfig === 'auto') {
+        return d3.select(selector)
+            .node()
+            .getBoundingClientRect()
+            .width;
+    }
+    else if (isNumeric(widthConfig)) {
+        return widthConfig;
+    }
+    else if (isPercentage(widthConfig)) {
+        var containerWidth = void 0, percentage = void 0;
+        containerWidth = d3.select(selector)
+            .node()
+            .getBoundingClientRect()
+            .width;
+        percentage = widthConfig.split('%')[0];
+        return Math.round(percentage * containerWidth / 100);
+    }
+    else {
+        throw Error('Unknow config width value: ' + widthConfig);
+    }
+}
+
+var Chart = (function () {
+    function Chart(strategy, data, userConfig, defaults) {
+        this.ds = null;
+        this.dispatcher = d3.dispatch('onmessage', 'onopen', 'onerror', 'addLoading', 'removeLoading');
+        this.config = this.loadConfigFromUser(userConfig, defaults);
+        this.context = new SvgContext(strategy, this.config);
+        this.data = data;
+    }
+    Chart.prototype.draw = function (data) {
+        if (data === void 0) { data = this.data; }
+        this.context.draw(copy(data));
+        this.data = data;
+    };
+    Chart.prototype.datasource = function (ds) {
+        var _this = this;
+        this.ds = ds;
+        this.ds.configure(this.dispatcher);
+        this.dispatcher.on('addLoading', function () { return _this.context.addLoading(); });
+        this.dispatcher.on('removeLoading', function () { return _this.context.removeLoading(); });
+        this.dispatcher.on('onmessage', function (data) { return _this.keepDrawing(data); });
+        this.dispatcher.on('onopen', function (event$$1) {
+            console.log('onopen', event$$1);
+        });
+        this.dispatcher.on('onerror', function (error) {
+            console.log('onerror', error);
+        });
+    };
+    Chart.prototype.loadConfigFromUser = function (userData, defaults) {
+        var config = new Config();
+        for (var v in defaults) {
+            config.put(v, (v in userData) ? userData[v] : defaults[v]);
+        }
+        var width = config.get('width');
+        width = calculateWidth(width, config.get('selector')) - config.get('marginLeft') - config.get('marginRight');
+        config.put('width', width);
+        return config;
+    };
+    return Chart;
+}());
+
+var Component = (function () {
+    function Component() {
+    }
+    Component.prototype.configure = function (config, svg) {
+        this.config = config;
+        this.svg = svg;
+    };
+    Component.prototype.clean = function () {
+        this.svg.selectAll('.serie').remove();
+    };
+    return Component;
+}());
+
+var XAxis = (function (_super) {
+    __extends(XAxis, _super);
+    function XAxis() {
+        return _super.call(this) || this;
+    }
+    XAxis.prototype.render = function () {
+        var width = this.config.get('width'), height = this.config.get('height'), xAxisFormat = this.config.get('xAxisFormat'), xAxisType = this.config.get('xAxisType'), xAxisLabel = this.config.get('xAxisLabel'), xAxisGrid = this.config.get('xAxisGrid');
+        this.initializeXAxis(width, height, xAxisFormat, xAxisType, xAxisGrid);
+        this.svg
+            .append('g')
+            .attr('class', "x axis " + xAxisType)
+            .attr('transform', 'translate(0,' + height + ')')
+            .call(this._xAxis);
+        this.svg
+            .append('text')
+            .attr('class', 'xaxis-title')
+            .attr("text-anchor", "middle")
+            .attr('x', width / 2)
+            .attr('y', height + 40)
+            .text(xAxisLabel)
+            .style('font', '0.8em Montserrat, sans-serif');
+    };
+    XAxis.prototype.update = function (data) {
+        var _this = this;
+        var propertyX = this.config.get('propertyX');
+        var xAxisType = this.config.get('xAxisType');
+        if (xAxisType === 'linear') {
+            var min$$1 = d3.min(data, function (d) { return d[propertyX]; }), max$$1 = d3.max(data, function (d) { return d[propertyX]; });
+            this.updateDomainByMinMax(min$$1, max$$1);
+        }
+        else if (xAxisType === 'time') {
+            var min$$1 = d3.min(data, function (d) { return (d[propertyX] || d[_this.config.get('propertyStart')]); }), max$$1 = d3.max(data, function (d) { return (d[propertyX] || d[_this.config.get('propertyEnd')]); });
+            this.updateDomainByMinMax(min$$1, max$$1);
+        }
+        else {
+            var keys = d3.map(data, function (d) { return d[propertyX]; }).keys();
+            this.updateDomainByKeys(keys);
+        }
+        this.transition();
+    };
+    XAxis.prototype.updateDomainByKeys = function (keys) {
+        this._xAxis.scale().domain(keys);
+    };
+    XAxis.prototype.updateDomainByMinMax = function (min$$1, max$$1) {
+        this._xAxis.scale().domain([min$$1, max$$1]);
+    };
+    XAxis.prototype.transition = function (time) {
+        if (time === void 0) { time = 200; }
+        this.svg.selectAll('.x.axis').transition().duration(time).call(this._xAxis);
+        this.svg.select('.x.axis path').raise();
+    };
+    XAxis.prototype.initializeXAxis = function (width, height, xAxisFormat, xAxisType, xAxisGrid) {
+        switch (xAxisType) {
+            case 'time':
+                this._xAxis = d3.axisBottom(d3.scaleTime().range([0, width]));
+                break;
+            case 'linear':
+                this._xAxis = d3.axisBottom(d3.scaleLinear().range([0, width]))
+                    .tickFormat(d3.format(xAxisFormat));
+                break;
+            case 'categorical':
+                this._xAxis = d3.axisBottom(d3.scaleBand().rangeRound([0, width])
+                    .padding(0.1).align(0.5));
+                break;
+            default:
+                throw new Error('Not allowed type for XAxis. Only allowed "time",  "linear" or "categorical". Got: ' + xAxisType);
+        }
+        if (xAxisGrid) {
+            this._xAxis
+                .tickSizeInner(-height)
+                .tickPadding(9);
+        }
+    };
+    Object.defineProperty(XAxis.prototype, "xAxis", {
+        get: function () {
+            return this._xAxis;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return XAxis;
+}(Component));
+
+var Globals = (function () {
+    function Globals() {
+    }
+    return Globals;
+}());
+Globals.COMPONENT_TRANSITION_TIME = 100;
+Globals.COMPONENT_HIDE_SHOW_TRANSITION_TIME = 300;
+Globals.COMPONENT_HIDE_OPACITY = 0.06;
+Globals.COMPONENT_DATA_KEY_ATTRIBUTE = 'data-proteic-key';
+Globals.LEGEND_DATA_KEY_ATTRIBUTE = 'data-proteic-legend-key';
+Globals.LEGEND_HIDE_OPACITY = 0.3;
+Globals.BREAKPOINT = 768;
+Globals.ASPECT_RATIO = 0.7;
+Globals.LOADING_ICON = 'data:image/gif;base64,R0lGODlhwgDCAPcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIECAIFCgMGDAMHDgQIEAUKEgYMFgcOGgcPHAcQHQgQHggSIAkTIwoWJwsYKwwaLw0cMw4fNxAiPBAjPxImQxMpShUsTxYvVBgzWxk1Xxo4ZBw7aR4/cB9DdiBFeiJHfyNKhCVOiiZSkShUlipYnStcpCxepy5hrTBksjFmtjJpuzNsvzVvxTdyzDh10Tp51zp62jt83Dx93zx+4Dx+4Dx/4T2A4z6C5z+E6kCF7UCF7UCG7kCG70CG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70KH70OH7UaI60uJ51SM4GOQ1HiXxY6etZ+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///yH/C05FVFNDQVBFMi4wAwEAAAAh+QQJBAAFACwAAAAAwgDCAAAI/gALCBxIsKDBgwgTKlzI8GAHEChWzJj4447FixZvTJyBomOHCg1DihxJsqTJkygTahiBYiLGlzBjwpzhAsXHlDhz6tzJs2AHFDAqyhxKtOiMFSB6Kl3KdCcIiUWjSo06w4SGplizah0IwoXQqWDDxvzhYsSDrWjTmuz6VazbtxhhJFVLty7BDl7h6t17MccKkHYDZx2Rg6/hwzfMCl6s8wGKwocjG/6BAjDjyyIr5JXM+bALy5hDG9TgorNpyZ9Fqy7woPTp15FTr2aMoi3s23tXnJ1dFwRk3MD55pjLe2uFGcGTH4YBuvjSFcqjTzbhfKmGG9Kz871xtbpOE7a1/osXu8J7ygcwxqvXO2O3+ZEdwq+fL/VHh/ciodPf75Y6foUPYMffgGHB4N5/BFUgIIEMSpVDdwgKpIF8DVYI0w8jRFjACBRa6CFGGf43wockFhWiea6VqGJMJzqX4oowYlSeizHW+JILxb1oo404rjbijkBa1GNoPwYZZIuLFWlkkMQJpuSSQP4AoV0TQgnlD82l9cBvVhp5w4FppdellTfUZcKYY7KgVgdoonnfVg902KaNP4DJ1IJzWgmDVizk2aZ/TGngZ5tSNoXnoGQydSaibarZUwVyMgpklimJKSmaM/AEwqV5vonTlpzOmYNOfYY6J6AnVWBqnnWmpOOq/l06apKqsOZJaUM41NomEEiKxIGuYwKRgp0i5QrsksISK1IGxxqZbE6HNrviszk9UIS0MVKrUwvYTjusUkN0WyILyqYkgrgfyrZUtOjupy5TRrRL4LtMqSAvf/Q2xeW94uXb1AP8qucvVqUGLB0NnqplrMHJISyYEgwH57Bgi0YM28SL0WDxaxgzFunGbnV8GciS3ZAwZiiQbFgOvWJWg8p6sewcDzC7JXN1NYd1c3Uf5Oxgy7zZ6/NQO7+n8dAwAYEqfjogjZG2CH5sMdQROk11hIL6fLWGFau8tYYFvADz12AXcDTILpRbdgEvbzzw2gNJLe3bcMfNMN11280v/t55D3StvHz3PZC8MdwqOELoinw4Q90qvjjjzTr+OOS6QjzDyZM3VPlLl2cuEqwQy9S55wuZGnpRzJGe0N+Mnj5V4IfLHaTrYsGet+w20g6X7WvjDqPufPGuYdtjAh+b4XWfDaXxnQn/nthQNtKIcpSpzfWS0mtXveDMApm9etvnveP39IXfe4zkD2i+hjusmH6D6/+nvIXve0iZhkJ7yLyHRZvXs4X7K1H/qjM9BgUQRgPkDc0GdEAbJVA1xJtPA4P0QJTRZ4JQqiBj1oPBMeUAc5fxnWQ6OKfRhWZ+wSHhoEzImK4BR4WSYqFg4vVCg8mwLgt7DQxrdcO0FMw0/js8Vg+18oACciaI2HIeTvbFFySiS4knyV8TnQYTKJaEhnpx4t2QtxN2TUWLbuMiTs7lFjCqzIoMEUJYzJiztDGFW1KpHxXFEr9qsU4mcpzjW+qYEi/eIY961AsfTZIBI14EkIHkyyBJkkNEJvIwiwzJr/5oyEfeJpIMwUElLQmcHyxtJLTipHTEmJBXifI2sprVKZMDBOsx5IerfM0nSwKqWL5mVDrZlC1PA8KTxGCXnaHBo4AATMmQciQuLCZcUskTPypTKmUK1DPhAoQpKQWW05TKLHvizGy+JAZwIqY3i9JKtLBpnETppaLQKRNmbuWX7MRINOlSy3h+KTAa/hAnOoFwTKY8aZrVvMw/ldmkJHkTaIEZaCyHJBpsrpKhqjElJyG6GokmMgUoWiVCfSTKjc5mBPrUo0d5k0898qpsCqIid+AWIKTFwJXvcejGtlm2DoR0aupc2wPgaTEawLRsJrjpvdw5uesEbKWqI4hMj6W0pB6kAigEVuGcmpAOMHFVw6EqQ4KqK3JptSEPWKqf0Eg60lyKrE6tAAuEaiWyfVUkD0jBVYHk1reWZATdLBENFGPXpeCFrR/KAQv62VeUdAWw8ypoYbdyWAYBoSw/XSxTQMCCqB7MKpJdTQdSEAPEmoYGLFBsZmezkhTQwLJwoYELUnCT0a7tISmoEOxpAXuD09IgBSkwQWuTGhAAIfkECQQABQAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMHAgQIAgUJAgUKAwcOBAkSBQsUBg4ZBxAdCRMiChUmCxcpDBkuDRwyDx84ECI9ESVCEidFEyhIEylJFCpLFCtNFi9TGDRdGjhjHDtpHj9wH0J2IUZ9I0qFJU+MKFSWKlidLFykLV+qL2KuMGSzMGW0MWa3Mmm7M2q9M2u/NGzANG3DNW/GNnHJN3LLN3PNOHXQOHXROXbTOXjVOnnYO3vbO3zdPH3fPH7gPX/iPYDkPoHmPoPoP4TqQIbuQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfvQYfvQYfvQYfvQYfvQYfvQYfvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQofvQ4ftRojrS4nnVIzgY5DUeJfFjp61n6Sqp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACwgcSLCgwYMIEypcyNDgBQ0iTEiEQXEIn4sYKWpUYUKEhgcNQ4ocSbKkyZMoE07QYEKFDYwwY8qcidEGDBQiJqTcybOnz58EH3xAAYOm0aNI+QxhYUID0KdQo/q8QKJo0qtYadpA8UGq169gBT4QocJi1rNoYw5R0TWs27cmP7BIS7cuzLVt4erdO3ACCrN2A9td65SvYa9jrQpeLBiGiMOQfU4oy7gy4x4mQEbePHKy5c+V1+rkTBqhZ9CoK7MYXbr0AxSpY1tGobk15AcmAMveHXgICduHP+jmTdxuj7zAw05QXLx5YBgXkoMlMdy5dbompEe98PK698A2ov5r92niu/nev8ennND9vHu6LGqrH6mh+vv7V4cgn8+QBP7/dKHAH0MPzAXggWfBIN+ABHGH4INZ2cAagwKJYB+EGMo0hHgUipDhh0kN8RiDHoJo4lHpzVfiiSzOpMJ8sLUoo0wvaqfCjDjGVCNwN+bo40XZ2dbjjz+OSJp/RCZpZGQrJknkkoZdcKGTM+6n1wRTUinjhoY90J6WSdqwoFvMgZkkC3sNaSaVKYb1wZprFgbWA1nCieMQY0JVpp1O2jAdn3AGuV2dgObI4VNfFqolDFGVpyicbfZ0waN2DjEhT3tSSiWaPr2pqZ1WntTDp5XmSZKjpAa6E52plppSjP6tqnrSBLHyaelJmdZK5Y6d6QropQ2p6auZvDbE6rB2AquQsMhqSQSUCj2QRLNmYmYqQsxS66MN0DZUhLZJwiAnSSGA+6MKyoqEg7kzEpEZT1Cwy2IP3Zp0grwmigvUqPhiiO5TD8Tb74HuXptSCgMDSO9XOiR8n75gCezwd/+GheTE1hUMV64Yp7bwXt92zBvEez0g8m4VG4bqyZZpHJkMLFv2MWdBxLwYDKFCJrHNaalwKGkZ8JyWu+ludq/QWNFr8GYwI40UzvzV7DRNPjNoxNQxEU1hAVhjpPTWBXDQNdRgC3Sx0FWXPVC2HWutNkEcJ/z12wUlOjHZdBvkg/7Iaed9EKHNuu03QoD7OvfgCRUeq2OIN4SEvCqM27hC5hKBQtGTG6RtDyQsnXlBzTL+OUnDxiv66CLVesghMXHuOepcp7qzhpfDrtC0ms5+VOS2/02p7led3nsBiue4umCuD1+8jMAPVjvse6/ZPGO8j243kdN/hnfjcbd4vHWH+812i1Cwbt4QJmDO4Nkzmo9f32qLjaP7B24PtoyHZI9f+AwecWL5LUKf+oDzAxDRb0bwU0/TIHRAH9lPOkc7UP7WxD/bBA1AALRV+rTznwYCKoGkkdp5PPioB77MPBM0nAheF5aVNSeDzRLgZkzmHBI2K2WGCRlvbAguku2le/6L0R+7ZgYX9lnmezFDHwt9gjvLCLFjOGSYE7sGEx9KBWFBpOJMiAgVGtYFiVqciRKlwi+0PDGMF4liTyKIlTOisYqS40kTkeLGN8qEiylZ11HAaMe6jHEn5aJJHft4FTWSRIcYGSQhs2LFkahJkYtECx6NlQQ+RlI2fxTJ+C4pm3oh5AFE4KR1BliQTYryM8VqCK1OSRxSGsRArIyNgEyyyliihghLNAisbGkZQZkElLxsWS4PYsRg1sWXKCmjMeuCy554apl1yZlJgAjNmXBqKtVECxFcKRIXZhNFUbneN2PCqO2EcpxG+RlQiolOPiBTT+2MiZ/mdM54NtNN8f68SBy9sstvRios1DzlNeHipW+KyTATqKcxiaBOuFxAobyU5luaZEtP6oWdl7RomirKI1a+kzSm1GIqW+PNN47UNhRF40mBk1Iq/nM8LXXas8D2AYgijaFqc9DUJES3AjlNQYPD6MRmiTgN2NRhRJCo2grasfjArqTsIsJLM3eBgNaKp8Mz21GR9dHeTQCWoWtoVgtQU2QdZ6zRMsFWHyVVtBpLramijVtFcppHGXKuC6krnIhwV7yqUgVrzZG1/MqTxDhJeITtiV+UySK+7jOxnQJrhviqVMj6ZCwqYCx+KGvZKFXlPlupbGfDIhSiOIcITHnsaDmzkpaIsy42wRYJN1dbmodEZCIUsalGKMKRD3wkqwEBACH5BAkEAAUALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEDBgIEBwIECQIFCgMGDAMHDgQIEAUKEgULFQYNGQcPHAgQHggSIQkUJQoXKQwaLg0cMg4eNg8gOhEkQBImRBMpSRUtUBYwVRgyWhg0XRo3Yhs7aB09bB5AcyBEeSFGfiNJgyRNiiZRkShUlilXmypYnitaoCtboyxdpi1eqC5grC9jsTFntzNqvTRtwTVvxjdyyjh10Dl31Dt72jx93zx+3zx+4Dx+4Dx+4Dx+4Dx+4Dx/4T1/4z6B5j+D6T+E6kCF7UCF7kCG7kCG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70CG70CG70CG70CG70CG70CG70CG70CH70GH7kKH7UaI60yK5leN3WuTz4CawJSgs6Ckq6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAsIHEiwoMGDCBMqXMjQoIUOI1K4uEGRIpWLGIdUTMFxRAcNDUOKHEmypMmTKBNaGMHiRg6MMGPKnIkxh4sUHSyk3Mmzp8+fBTukmDGEptGjSKncYAEiAtCnUKP2BMHiZdKrWGneMAFSqtevYAWCcFE0q9mzMYe4GOE0rNu3JceWRUu37sUZIODq3RuUrN2/gIew0Mm38NcRVgErBnyDreHHPSOk4LG48mK1hCFrFmnBr+XPi11k3kza4QzQqC2LLs26QAQWqWNbTtG29eMUc2Xr/juEtm2+ICjvHq54SN7fbjXcIM588YzRyKGmaE69uInoUDUkrs697o2u2Hn+msjdvTzaFOFTRlhuvn3dHLXTiwRB3r19rEM6yBfp4r5/utftp9B6/xV41gzxCTiQBdsZ6CBSOYCnYAEa1PfghTMZN2EBI1iI4YcxjaCgCSCWiJSI8vVn4oo0oYidiizGGBN60cEo440XuYAcbDj2mKNtI/goJBU6lhbkkEIGqNmRSArpomFMNunjEBLuVaGUSA4B3VsRNIhlj/DxddqXTd6wF4lkSskCXB2k+eVxYFngoZs4DpFgVF7SKeQMYE2n55dKZvcnmVpKleegQuYQFZqIfknjT3I2mmaVO7En6Zdm+gTCpW7Cqd6cnPrIQ09+hkpmoCZFaiqhd45k46r+WK55kgWw0rllSK/WKmWRJNGqq5u3LpTrr03yGpKvxLLqarJuPspQBKAy2+OoIUUpLZZPKmTptVhmuhCy3H6p30LbhlsspQZdYm6TOjjGkArrCmkEC+gm1EO8OM6QbUMR4BtjDyYEyxCP/n5ohAvjoiRcwQ+222pJ6jJc4LwCl8SoxPbhBVW5GHMHcMUpIdFxdwcnHFW/I1PncFgopEwcxXDh4LJuGu/1w8yoAfxwWDhbdnC9b7XZM2PuQrbC0HX1MBhrMiNtVs2t3ex0UjpHJ/LUNP2cHtYzNbYzax9wjZHSILd2sdMueCpgC1PrYMLX4XE8stYbFnQow43VjdD+vSP3kELZE0bLbdp6MyR4sm7DXbhAh9dK9+INLbFu3pCPFK7fgFde0LUIa34S4kV7XpKuhnhCRQ5vi/75qqbLRLjqlnP6SOtG8fA37JFLGnFWlOOOUOM+GsKbC0CrDryMpVuGuuKLH78i7ai9jjvfTc5OnO2ZC3g3i4bsTl3vlcvNvX1qFb8f2zcmXyAPqet9donQPwi1gmGb+EiMPCytIIjd++j1fkm4kPCaVL70+MBA6iMT+5hXmKbdJ350ml9pjuae+4Uqf9kLi9C60z9d/W8zA6SOBZmlFpMVRmrEsd662JdBoDhQNxCMlwTd0jLZjHBkgmmhelLTwaHlIHT+XrlaZW44tRKCRXxnUaHYYMJCqbzvLDFcIkxm2BMiYiWEUkxKDoGysKv0MItm+SEDF0IwpFgRjGjpnHqwKBMlolEx2EMJ9WLivTd+Rl8mgRdM2GjH1AjGfAa53xf7OBwxhgSJhBwO8RgCrkRWx4QIQaQjY+OthVhrksPZF0IiYARMMqcHy/LkcFD1LVHuxghjFMiwTFkZYx2LlbHRYQFWCUu7uJIztfyMLAVSqlz+RVYn4aQv/4LKnfRymGchZUmEicyzgHIqzTyL2lIypmgmpZI8sUAnrYkUQJLkidzEiLN+Islm6kAqGginTIywy4YcM5zKBIoO1HmXsGhTncX+1KA6p+kVcNYSmG+p5jCx6ZYIzHOYOkjlTzSwzVqy8zGX9KQRvHmYWmqSLxFNZDwLk1E73lIzZSTkRzdDSymOlDQl5do4f5NSp13UNv50qYJG0FCuvTQ6DOWaEfgpHwscFGk6oChyCDQ0BGkupCPbaN1AUFOJGQGSlSOqxBLqO4GYoKnrWinuNPBTc32nqgd5Z7KMoNSqKudazwErQ0AwR1jtVK0iuapbfQNXkbwmVEaga117JdA/uUChey1IZ7CKpdUElieSaeuQDtbOwyJkBOUs0QcdC5UOuICwICIbZd0yFswaiIqbBUtnHdSDtQA2tEChSlfLsxWhojZoQ/EpLGiMsJSmvDY9K2nJagGjg5vk5LaLiwBEJFIRi8SEthThSApA8JG9BgQAIfkECQQABAAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEBAQIEAwYLAwcOBAgPBAkRBQsUBg0XBg4ZCBEfCRMjChYnCxgrDBovDRwzDh42DyE6ECI9ESRBEiZEEyhHFCtMFi5SGDNaGjdiHDtpHj9wH0N3IUZ+IkiCI0uGJU2KJlCQKFSWKlidLFylLmKuMmi5NGzBNG3CNW7DNW7ENW/FNXDGNnDIN3LKN3PNOHTPOHXROHbSOXfTOnnXO3raO3vcO3zdO33ePH3fPH7gPH7gPH7hPX/iPoHmQIXtQIbvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQofuRYjsSonnVIzgY5DUeJfFjp61n6Sqp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACQgcSLCgwYMIEypcyNCgBA0kIrqYCCOPxYsWiUx0cYKEBw0NQ4ocSbKkyZMoFT4kocIFxpcwY8KcSAKEhZQ4c+rcybOghxMuZQodSpQICxIgeypdylSnBRFBiUqdOpSjh6ZYs2oV2ACECiJUw4oVSkTF1a1o05r0wGKs27cxy55VS7fuQAkndMDdy/di2aR2AzftWrGvYcMwQAhevFOCisOQIesg0YCxZZKOI2uGTOSEhMugE2beTBqyipuhU48uzfrwicqpGTc40bo2ZxGxBXvQa7u3YR2Ac2+V0Na3ccMuPgvPKgLs8ed9TyxnaqEw9Ot7YaCerpM29u97if7g5p6ygXXw6N2ygE2epAbn6eOPJRK8PUMR8vO/lW5/YYPi+gUYFgzs9VeQBbwJqOBUMChn4EAgwLfghEMRsZ2BIFCooVREzGVfhhuGOJRiH4poolAqtPfYiSzClOJ0K7Yo40Uv5hbjjDjyl9qNOOJIImgg9ihkHj8yFuSQQhYZmAUSItmjknQx6aSTFgZm3pRTEmjXeVgOyUJd3nU55XhoaSCmmPUN1uSZQxJRYFMAsjmlC1rhJ6eYOi4l5Z1iXtgTl3w6CQNTYQbaJZmNGcomEQ7qFJWiXX65kweQyulhSglW2qUOb5pEgqZy5mlSA2uCOmWjJfFoKpY1lmTBqv53oiqSqrBO2apIEtQqp5up6ionCSSR6uuinSr06bBsAitSpshiyWtDRzbbJZQIMSttlg2ZeS2bshpE67ZIinpQqeAOqcNClJZ75qUFfauukLcWRO67QhZLAAr0YlmEWQndkK+5J/h5UBP/zqhDwCHZWbCJBwu80KMLTxiDCN02NETEElOME8YCTlwxScdynB4LIHxsEsQiP0eyvTj9kDJ0K2dF8Mu27QsCyzx1QHNr+7KblQk7b9ZzYCgH/ZYO/C7Wg9F7NQzaxUyL5XRqUVM1dWyvVi2Ux9wprPVFXLe3wtcWhd1f0TSTbPJ0aHMc84MFQf3y23AbJHfENuNc9/7d+Q5dd0NH/Ov33yHRi7TPhC9U7tWJk3Qt442XhGwMCEe+ca2DWAS55ZKbmnlMm3PekKafSxW66AgpWvpYh6O+UOByrs6XXK4fxLeTskdGe+0C3Y7jIDP3VtbNrvvOIvDg0d142xsin5/ydTO/YBO568eCxnWPLSL1J8KAfX9eT1+9id6vDVoFEw4y/ozeO0x1gOs7ebplxkMX/5nzB8YDevcHmr9a0mNN/zS1O8EA7TgDrFUB6aKz3iSwWQtES2uc9zKjEG8rLtMMBaMGPaUEkCobJFseOqiTkMGFeyIUyvXM57i3oDCFDPoeTuoXkxfCcCzlw8kH1XfDw7TvJP7he8kDeyi1yo0keBcZIhHh8j+C+MsiSFyib5qIAiVKcTMRLEgRrhgflrmLi76JF0HSBUbsIG4gWywjdM61kC+qsTTiMoi23mgcFsaAjr6JQUiihcfSUKtafeSZ3ghiwkBqRlkhaUAaDRmZIgyyXYw8ZElyFcnDONIkbqzkVMTYkKxpci8sREgmPykTTiZykaQMSygTEsRUDiWOJbGWK0H3SIbMcZZCOWNJPkhKSSUKlzEpwipDUihgWgRRPLmjMcvWFAugEpfu00krSQlLnsQplXTSiiJnecmt3PKTacJKMSOJzK0os5K+VEsDzmnIGNRSKRJ4Jh2LEM2tONOQf/tUCx/LmE+67POK/azLKEUYULsMVGuIjM1BmWbKy4wzhQ0FEhEjGpp/Rq2gqbHozoqgy+WAQJ4brSd3EBS1GAwzN/8xmjs5N82FVfNvGgBp38IZuXVibD28G8hDwVWEcvLOAuwEVwxE6joRyNRXL80pAYhzreQotSG7GRZwniqS2dSqp1Sd5EKn9JqsnmQ1gVLBSb3qEBUcdUhF8AxZd9IAEpxVRpN551oTCYKgzigGGJ0rSvAiyw3ti6Z6XYoHtvqdwQVWnV55K3YMe1jBPIWXtbFKY4XzE8gapghHAexkY7OSlmiGJjbZbOQeIgKJTMSuFinCRjrykbUGBAAh+QQJBAAFACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwcCBAgCBQoDBgwDBw4ECREFCxUGDRgHDxsIER4JEiEJFCQLFykMGS0MGjANHTQOHzgQITwQIjwQIj4RJUMTKEgULE4WL1QXMVgYM1sZNV8aOGQbOmccPGseP3AgQ3ghRnwiSIAjSoQkTIclTosmUI8nUpInU5QoVZcpV5srWqEsXaYuYKwwY7EwZbQxZ7cyabwza780bcM1b8c3csw4ddE5d9Q6edg7fNw8fN08fd48fd88ft88fuA8fuA8fuA8fuA8fuA8fuE9f+E9gOM+gug/hOo/hOtAhe1Ahe5Ahu5Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bhu9Ah+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Ch+5FiOxKiehTjOFjkNR4l8WOnrWfpKqnp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gALCBxIsKDBgwgTKlzI0CAEDhxUqLCRI0cTPxgzYqxYUSIJiA1DihxJsqTJkygTUgjhIkcPjTBjyozZw4YKDhRS6tzJs6fPghFtXJxJtGjRJjlchIDws6nTpzw5uHhptKpVozlQYIDKtavXgSFmDL1KtqxMIDOWfl3L1mTYsWbjytVog0Tbu3gLYpgxt69fjU1c5MxLuCuJHH8TK85ht7BjnhBUAFFMWXHgwY8zi6TAt7JnyjMwax5tkIKNz6grz2BKujUEF6ljU26ignXrxyrgyt7dl7bt23dJTOZNPHGTEMDbYkBcvHniHKKTP1XhvLpxFNKfUqBqvXvfHFuz/vdEodu7ebMqxOuEwPy8e7k9oqsPGaL8+/tWm3SYP7Iz/v9mYcffQhCcBuCBZa02IELbIeggWT2Et+BAGNj34IUxHTehQCRYiOGHGjU2IHUglliUiOr5Z+KKMaEonYosxphRetnBKOONM0gH2408apTjbST0KGRGP44W5JBICpjZkUgi6WJeITQpZRMS5lWhlFPKtxYE3GGJZA+/sWWgl1LagBcKZJJZ5FcdpJkmcl9R4KGbPDYR5lNd0illDl6RqCeZSjqFwZ9uNqElT+0R6mUPT6GpqJs0+iTno3RWuVOilHrJZ09MZvomZHN6KiQQPPkpapqBmgRBqKf2aGdK/qa2SmakJU0qK52HMmTjrViuuRmvf+aa0K7ASukrQxQUq+erIu2oLKQjsfosj6SG1Om0ZD6JEKbYYrnpQsl2WylDzoqrJkPSmitjEwtdqy6WcCI05rteHjsQBPQWmpC7+TYZb0HE9iukvQWkK/CK7Bo06MFkWlpArAwj6YJBUETcZA4qOIyvxTz2oJRCLHDMYhAzkHDnQTuI/KETNmhFEhEqO4jxfidlETN+HquV0gY3n+dEycKSBHHPvLXsME8pE81bDyrQzBXMSqMWhFInP1Vx1IqxTELQT2H9V1ZHswWC13F57PRjjpJtFMkm3/aC2jOxjALXhXFLNsZh32Y3/tE5bwi10mzTnZwSPcud94KEizzzhgtJEfHUOjO+kMA/by35SPQafblJ4jJ99uYlPUty5KCjxKsgkmCEFumlc35qJEV5zEHrrj+Kulma094QoZHY/FcTQOue0BRp3p4aEFQLT1DiTUaSenNMzy488zwab14TuYP+N4u9O4iW5ZInXaL1IOZctXR7A0i+jHjz97aDzpOJ/dzZpX2fIL4T+v35hI393vOtkh1pzLM+YIHtMVcrTvfohT3w3WV7qSmgwFbHv5+I7zOwi1r0+uQZCWItez/h2V8WCLeZAM+BPMmgWTxYQqIgj3UmgaBR4tdCv2BMeia54ExYWMO5zO9w/gcZmh9I2EPZfI9uG8sIAItYnb4p5Ak8ZKJz2mcQ+0kRPxPTyxUPdLQgbBE/TkBIwL7oHIJFiYzu+RdBkojG7oQxIfNqYxkVwi858kaNBnGCHZ3zRoWUa4+7IRhBwgVI3gBRIOkr5GKspUjZaAshemzkZ4Iwkj9KMjG0QtYlK+OEChpkjJskiyBVEsrECA5gpezLKBVCgUim0iynNIgQX0mUTJIEAq6kpVE6qZNZ6lIjqVJVLn8ZE0ry5IzElAkeUZJIWn6LJ61MJkwOSRIrEtOWiJKmHxj1lIUR0wmxFFoyg9mUPJXymVCJ5it5ySZaLhMq1mzkKp0CyjaaCS9c/rokmAiDgWHaEZyOQeYenUBNwxTykXip4xXJWRiFFnGeePFlCyGal3qSjaKEsWjUGNoajfYMobeRKNFAChwS+DNqJE1OP8nmhHfOp0EaDOdtCqQ0BbXOo+riqORCcNJ+OeFztGOPxeKjvIKgoKfiwmZRYfou6BRVISKVlRN0+lSBLKdbTq1qQ0LgxWK1VKvVRKqinFAbsJYkMqciqyfNqhKcDsmmbE0JZwgVmrj6JDJdxZITBGPXpxzmYintq072wqO9ylSwKAmLWAFUF8QWRrEOGt1aHesVDEzlPgekbHI6MJHFcjIpMNSsdFbSEnP6pSZNO6xogdMBzk6kIid1CwJHMKYCErTWrgEBACH5BAkEAAUALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwEDBQIECAIFCQIFCwMGDAQIDwQJEQULFQYOGQcPHAgRHwgSIQkUJAoVJgsXKQwYLAwZLQwaLw0cMg4eNQ4eNw8gORAhPBEjPxElQxInRhMpShQsThYvUxcxWBgzWxk0XRo2YRs5Zhw7aRw8bB0+bx5Acx9DdyBEeiFGfSNKhSVPjShTlSpZni1epy5grC9jsDBkszFmtTJouTJpuzNqvTRrvzRtwTVuxDZwyDZxyTdyyzdzzTh0zzh20jl41jp62Tt72zt83jx93zx+4Dx+4T1/4j2A4z6B5j+E60CG70CG70CG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8ECH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CG70CG70CG70CG70CG70CG70CG70GG70GG70KH7kSH7EmI6VGL4l6P2HSVyI6etZ+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAsIHEiwoMGDCBMqXMjQoAURMiLW4EFRyKCLF6FQ3FhDhgoRERqKHEmypMmTKFMm5GBCxg0eGGPKnEkTI0UZLjio3Mmzp8+fBUXUsFizqNGjUHLIEAG0qdOnPjm4gHm0qtWjPGSYgMq1q1eBEVTkgHK1rNmiUG5s/cq27UkTN87KnUsz7Vq3ePMOtFAjCd2/gDGmZaq3MNewRAMrDpxEheHHPiPIILu4suIkMkJC3kzSwmTLoBdDqWGBs+mEFuKGXl35RunTsFOznm35hmbYjyXT3l0Zigzchk345U38MmHgbC3kKM58MY/XyLl+bk49cOboTkUkrs6drhCd2H3+yuhOHjAUF+F3RqBavv3cHLfTkxRB2b39s1COy284/r5/uTXsx1AEy/1noFlCxCcgQRwMd+CDVn23YEEm1AfhhUZBAd6EKmDoYVVQ3LVfhx+WaJRjI5qoYlEBpqfaijDKdEN4L8Zo40UzIlfjjTfmCFsNPAaJEYqmkSikkERCZuSRSG7GgYVMBqlfXk9GGaWGhUWwnZVCJqEgW1tyKWQOeQEpJpfotSXCmWdOCVUEULJ5JBRfOlWgnFzy4JULeLI5A1cc9Cmnmz1pKSibQjw1w6FypvmTBYzKCQV0PbEXqZhk+rTmpXKKqJKDnIrpJU+LhirnnyrBaSqelJq046r+XPpoUqCwsorSq7VaKetIkOaKZ50LmemrnyWpOiybdJJU6rHEjgQqs1wm29CS0IqZpELPVmtlogxtqi2brR6E67dMtqhQnOQymcRCJqTbqULjuivkrgWhK++RwLZ775nXDhTvvjxmWpCxAFsJxUH6FszlhgMtq3CUjg7Uw8Nc9mAQxWIGhTGX+jm8sZCoCuTDx1FaPJAlJPPYQw0mUIpCyisOcYMKDBf0L8zuJZHDDIQeNDHO/kXRwwwtm7QE0O0NUQPNOz2BNHVJ3OBCzyg9zZvQPAO70wZWr7ayCuE6xWfXgcmcU153kl1WFDuD9NjPah81dNGm/RA3TTIzjZz+EncPovPU+zltNdYmaB2d4DB/XfOEBSBOcdSAM56QFAqznbXkDaEs78p0Yz4SuWYv7vnnx+rM8+g95dpJIRfpvBTqPJnK+lFCSC067AsdujpgPLAcNu4FTcHm7qFptJThozseJPHMQU615MrDqLl9vevtefQeFjL7hcYXzjjfHjIfo+vPn2b3g9NzWbv1uMHd3urbM5pV55ulXZ34tSZ1/GNjM4f/t7WLnFu4tptOpI9i1ftdU1jzP5gZz21PoZxiGhi3v5WvJEejywH7ZhQhLO12I3HfUeDHQfPMT4EJuRkFS8gYpVxQIC+bSfxYSJwAgrAAg1ghDanTO/oVQAf+O3yQyQTisSDaJ2QF8JYR7zOlJf7HICJ0YneG2DApuidiAkmYFbsjuihssTtRQMjNvsgagVGIjNXp10C8iEbmaG2MbVwMvQiixTjOxlMGYaMdWbOuhcBxj3MxV0KUCEjLoHAg2SokYIYgEmopEjBqREgiH3mWKCCPIEWk5FmQOCA9arKSlyyIsD5pFk42pFekNEsoDfLHVA5ijqd05VUOCS9ZHgWWIomAJ20pE1ouJJO8NOVJJunKUfGEkLx8oUii6Eoz8gSVtoyCL5XFy0FgsVBDsCUjn0IrVyrzJP37pDCBYj9FUvFNuwSkJdmCzD1+kyej3OM1vZJNQDqTLRH+qGccjUmldFoxCjf0Cgf86cR3PsWRToxkXhAaRIXqJZ4NBU4rrSZI2EwUaLjkzEVTltEisbCi2GHo0xwKHJHCLAp4lI8ICEoygHquQU8bQkDTQyCgDWGV6QnnxsbpuZVuLAoG3U8EmCkv+AAPIcD8VhTmedSBiECf6ZJpUxniApb6agY4PapytNWDaU51IMIpXVC/WoAIJJVRSyWrSmRjKtuo9Zkb5ZFr3vqoGVhVSFEgDV2dYta7jg+rez2MCqDKo8YEti18ISaGonCDmR7WKXAxEWNT+li3hCUHfuXOZCuLG6kQlTpz42x6hELY3VhurKKFDAdEMIMbfHYuPdgZ2dlSq1XWzuC2PcitCIWm26HN4CNZHV1AAAAh+QQJBAAEACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAQEBAwYDBw0DCA4ECBAFChIGDRgHDxoHEB0IEiAJEyIKFSYLFyoNGzEPHzgRJEESJ0cTKUkUKkwVLVAWMFUYM1oZNmAbO2geP3EfQnUgRHkhRn0iSIAjSoMjS4YkTIglTosmT44nU5QpV5srWqItXqguYKwvYrAwZLMwZbUyaLkzar41bsM2cck4ddA6etg8fd08fd48fd88fuA8fuA8fuA8fuA9f+E9f+I9gOM+geU+guc/hOxAhu5Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBhu9Bhu9Bhu9Bhu9Bhu9Bhu9Bhu9Bhu9Bhu9Ahu9Ahu9Ahu9Bhu9Bhu9Bhu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh+9Bh+9Ch+5FiOxKiedUjOBjkNR4l8WOnrWfpKqnp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gAJCBxIsKDBgwgTKlzI0KCECx5GnJBBUUaNQBgzBrpB8cSIERdCNhxJsqTJkyhTqkwoYcMIGTc0ypxJc+YNFyAlrNzJs6fPnwQbXBjhwkfNo0iT+pAxYkMDoFCjSu1Z4UTMpFizJq0BosLUr2DDDtywwqjWs2hr3ljhVKzbtycbeCibtq5dmi48wN3Lt2CFFXcDC9bo44TOvojBepAxuLFjGXoTS+7ZYMRVx5gHFz48uTNJCYAzi8a8grPn0w5Dj17tuDTq1wQqs56N2ceIp7AnjzBLu7fm27n7erjsu7hgHyCCv61w0bjzxjJMK4864rn1xsinR5XA+Lp3wdG1/vsEwfu7+bq2xa/kfr594Bpe1Zv0UN69/bM+NsgneeK+f7vJ7adQAy78Z2BaK+AmYEESNHfgg1nVIJ2AFdQH4YU1+YDBggJ5gOGHWUW2X3UgloiUiOKpZuKKM6GonIosxphRgC/KaKNMK9R4444Y5QibhzwG6eNpQAYZ5AhEGqlkIC72hcGSSvoQH2ISWAiljT5M6FYDDl4ZZA0KwlWgl0u6wBeJZC6JAlwbpOmlfmJV6OaVWYrV5ZxKyhAWmnhCSeN2fZJZp1TdBXqlnlGBYGiaSAJV5aJpTtlToZAe+pOilabZJEoNWJmpkTf0xOenVzaqUqekpulDmCeNmiqU/qae9OiraWrZEIy0QjlkSRLkOqetCuHq65K7NtTrsG6yuhAKyLoZK0OeNhtkqCMVKa2Xmx5E6bVQIrrQsdySKSlCzIZLZrEHRWvujqsqZO26UGYr0JjwXonuQA3UK2hCber7JkLC+svjvQQQJzCoB1VwsJfjEuDqwjyuWdCdEPNILb4VXxlmvxkrueFAD3dsY6zbinyjmQOpa7KJF4O7Mo+HPflykHCGPPOKjdJ7s40oG7HzijXgtMHHAv0MIRAyrDACBsB2YLR9HI0AAgbKJoTp088FPYIHRKNUAta9Jb10wyuVDPZdHKEwddU/0XC2XVpzzRcOb2Ml9gZk76Xy/s9Iq810bnuLXANTcqtHxM535y2eyH1PDeyCB0fNNdscGrSuDEIrXvlCyPa99OObk5SqI450ktFSSl8AeugNLdrJ62hh3pTmrB+UZieORGJ6ZpJfQHntjhhJ+u7PLeWR6rUPdHiMrxP/n+x4bx54e7k7DzThF8g3vXPDu2k8CMjDRvd5zb+aeGczWFf9uoNvnf1eZmOGu/UQc3QC+L/z9LX8pdct9gW0M8nV6rK+um0FJx54X0qclpX5GbAx9sNfSWrSvQf65n+P81np6GfB62htAwokgM46aCCU2YyE7WmUzFBoIDi5jIX34QwQYOifixEgfjS8DsoEcsIcOidW/hzzoXm6li8hnodVFDOicWzIQyV6R2IEUZgTrUM2g02RNkwcSMCuOBqCBZGLs4GTQYoIxtkAQSEjLGNmCNYhNbJGXgKZoRszA4T8lWuOrWHIC/EYmADekI+D8dZC3gXItMCxIHIsZFqyqJA7KvIsz/rWI9OSP4NscZI4khUms7K6g1xyk2z8ViI3OZNOIqSHj4xkSRowSlIGoo47QSUg/5QSVroSI4xEyQA3eciS4JCPguSJBFqpSD+WZJeFpKVPflnGYP5kj3MEgilRIksnKhMqSQSjM6NSAWJyUZpu+SIYxSiWasIQim/5JA13CBcucRFMVPImDcGZmBUKEQjG/vwKIWHYS7fsk4SqTMw/HxhKxJjzZwVNjDqNllDJLPRm/ZzMQ1cW0c4cNGMV9cxAX5bR03TTaEDo2oIatDMJ1Y5AM0tQ8gTiyIxdk3UekGe9QrpShzCTW/CpKUJAIFNpASGgOhUIe+AVnqAu5KKQAsJLjWqQCtw0U0VlarWsSCqlSpWaPe3TTyt5VYTIJlNb7epOQAMplYq1J2TFk2vOCpTKUJVHQEDBNNl6ksXkqaN0TclfbhTXueaVJ3JZQVb9k5e/ToYsb23PWtpiWI+iILFZ60pjp9MADBAFsqJBWlO4OlnUtOQlmF0kTqjWWZ1KAAMRQUFFLEKTwckABR/BBwAG8lm7gAAAIfkECQQABQAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAECAgQJAwYLAwYMAwcOBAgPBQoTBgwXBw8cCBEeCBIhCRQkCxcpDBktDRsxDh41Dx84DyE7ECI8ECM+ESVDEyhHEylKFCtNFSxPFjBVGDNaGTVeGjhjGzpmHDtpHDxrHT5vHkByH0N3IUV7IkiAI0uFJE2JJlGQKFSWKlidLFykLmGsMGSyMWa1Mmi5M2q8M2u/NG3CNG3CNW7DNW7ENW/FNnDHNnHINnHKN3LLN3TOOHXQOXfUOnnYOnrZO3vbO3zcO3zdPH3ePH3fPH7gPH7gPH7hPYDkPoLoP4TrQIXtQIbuQIbvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfvQIfvQIfvQIfvQIfvQIfvQIbvQIbvQIbvQIbvQYbvQYbvQYbvQYfvQYfvQYfvQYfvQofvQ4ftRojrS4nnVIzgY5DUeJfFjp61n6Sqp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACwgcSLCgwYMIEypcyNDgAw4oWLy4QRGKoIsYMVK8IYMFCQ4PGoocSbKkyZMoUya8EIKFjBsZY8qcKfMGDY8XVOrcybOnz4IcWMCkSbSoUUE3WHD4ybSp055Bhx6dSnVm0qVPs2rdWuABCRoWq4odK5NGCK5o06IMISMs2bdwBUGRcVat3bsEL7woErevXygvcuIdnPUBCh5+EysuQoKw454PWLhVTLkvFBYhH2smOUFy5c+KAU/YTDrhBBmgU1eWMbq069OqY69u7dpxZNm4KV+uTZgD39zAExfByhvtBBrBkyumQbv4U8/Ko/vF7Lypb+nY/RYRXJ0ni+zg/f6i6K7zgdTw6MnSyEy+JIfJ6eNXhUK8fcPv8vOTZWGfoXn9AI51A3v9FXQBfAEmWNR2BRqIoIIQzgQFdwWSEOGFR0HRWIUYdmjUhu2h4OGIRPFHHmokpiiTDN2hqOKLGLFYnIsw1iija/jVqKMgIG5m4Y5A9ujYj0AGqdmBRSZJ4V1IJlnkhIM98JuTTxKYFmJUOnnDXTlmmaSJaHHgpZf1FfbgmDpCYaVT56GZ5JZaieiml2A2dcGcaJYJ2ZR4UsmDU132SWWdPE0gKJpQNLdTm4c6SYNPYjaaZ098SkplEd5Z6iahJk1wpqZFKloSjaBmeWOnpc4pqkikpkrlqf4jGeqqm2syBMOsm5b0wKe47qgmSYH2OuhIuwqLaK0HEWmsl+M1VOmyTv7J0J3QornkQbdWOyYMDPGqbY2YKhTCt2jWhVCr5BYJa0HepvvirweN666XQg6E3LxZPnoQvl5CcVCk/FJ5bbAB78gpowXrCCdBCWcJVMNU1kcwxDDWiTDFLy5cAMZODkQtx0AKpizINdY1MckkmngvyjYKdDHLHsIJ845dzazjQzbXyIEJOcNIwss9pwcFRTB4xAFxQASNXg82saAUB6sW9ITSuQ19Q9Ef6UnS1FQnxvRNT0etE9ddZ0iR0x9du1XZMTHd0dPI4tWz1WhzoDZvHLvt9P7Rcds3L91G390gQsbqDffgO1nayCWXOOJITDxwtDdIiOuE5uJdOP7X2YFX3pCOjDf+OHaRv8235wJ1yHjmI1r9gtFa89aIfKFr7mbkYB8t9l1kB7f66Ma6DjvvqdUOPMa4T757Sr2P9TvbMgmftUpJF2U89IklHzZDQz2PvXTSHz0Qz99D+FH5EIKEvoIhrZ+gy+7rB+fK8acn48n1R2fiyPlnV9fH/QMPdwKIHoIAjYCy0Rj+EBibOgGMgckpEwSjY5ADTpAyGhPIAi+oGE49kIOqURsIZeOvg9BvhJXRl0HkhcLP1Gsg7WrhfOKGLhm+ZV0EYaEN+2IuhMRwh/5EMYKtgBgXbi0EgEQUi+AIYoQkjqUHIuGfE4vSrIb80Inwus8Up8IphRRri0TJokiyBcaZdHEhsiqjTPqWkBpuEYcNSaMaL7I8hbgxiXAUiafmKIg6LmSDMjxjSZoIRiHy5INJjN1JLAhCFRZqioliCiAnKMiUPICQO4SiU5DYQkXuRE6B3MoJOZhBp3wRhGLMCiIh6ElJgrCSTunBBR2ZlktC0AhsfEqTAgglwuyyfr0cUgBfiBcpfo+Yg5lkz5BJmDsqLY+PcWbOoKkZacKMmpsBJdVgWRpjwoyZvPEmyKDQw/78EmXBHNw5OWaEJbbnPyQbEOoIosxvcbNB762BGH3miRB4Bmw9/FRIPWdVxYAmhAOY/FY7DSoS6FSLOgzV4yhnxZyImgShvTJCKy0qUFfthqMqgY2mWAPSQlkzSSQtqU8ic0UVXcaPKjUJS7N0mVzGVCWGkSWQjADOm/7kAjBI6IiMAAN3+vQpbGkpeOZSzqPixStgUZBZnMqbCwglPlehanuiopyhKUWrlWOJSxhZlaaRwKhgbdBDIgKDjQgVI1a7mtFsGtCAAAAh+QQJBAAEACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMBAwYECRAFCxQGDRcHDxsHEBwIER8JEyIKFScLGCsNGzEPHzgQIjwRJEASJ0UUK0wWL1MXMVcZNF4bOmgeQHMgRXoiR38jSoQjS4YkTIgkTYolToslT40mUI8nUpIoVZgqV5wrWqIsXaYuYKsvYq8wZLIxZbUyaLozar00bMA0bcM1b8Y2cco4dM84dtI5d9Q5d9Q5d9U5eNY6eNc6edk6eto7fNw8fd88fuA8f+I+geY/g+o/hexAhe5Ahu5Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BAh+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ah+9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bhu9Bhu5Chu5Dh+xHiOpOiuRbjtprk898mMSJnbuUobWbpLKip66rq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gAJCBxIsKDBgwgTKlzI0CAECxY+fEgBAwafixgv4qhYUcSHDRYmNBxJsqTJkyhTqkwIIcMHGEIyypxJcyYOFh8sQFjJs6fPn0AJLojIImbNo0iRCoHxIcPOoFCjSu05QQSNpFizYqXxQeTUr2DDCsyQAofWs2iP4kiRQazbtygXbCiatq5dmiw2LIDLty9BCCmM3h1MmI8QEU/9Kv66wWLhx49hbFhM+SeED2Yha34s5EPiyqBHAt5MenOKz6FTFxxdurXm06pjE1jwwbVtzZ33yqZMW/Dt34Rz7/a7ITPw44WFTB7udsJV5NAjo2YOtUP065w7UI8KwTH274Nh/kzfnrKDb/Do0wrRTl5l9/Tww49vv5DD+fj4tQppS39k7fwA1vVBfwstwEKACKaVgm4ErvZcghBmRcN87U1wX4QY0iSEBQ0KxEGGIGbFQYMphGhiUiPSV+KJLNbE3nYrtiijTCnAOOONNDIXI4481ijbjjz2GNuHQRZ50QipEWmkkSlSZsGSUPLhlWIQXBjljEJQCNYCD15ZJA0MwnWgl1D6CNd/ZEI54FsZpOllk2BZ6OaVWYrl3ZxQwhCWdXh6+SJ3VvbJY51S3SlonlLxeaifUFW5KJmE/mToo1DSAJSSlL7p0wKBZhokDj6h6amXa6rE6ahpChHmSaKiemWp/ic56iqkWioE5KxRmlkSBLjOWetBt/Zapkm8Cuvmqgu1amyUsDLU6bI8gjoSptBeCadCk1a7pJ4MFastmb+O8G2auh506rheqqoQtehCeW1BY7Z7JQsKyQtpQm3a6yV/BgWrb5DlDmTcv0tKW9AEBHs55UDKJhwkkgV16fCXq018ZZj5WrwkhwxrrCZB2Xo8I70DPSuyiQZ7e3KQumW8Mo/8Nfxyi2vGO/ON3A58s4xCCLRzkAQg/DOOQw2NowXsGm1iRErP2IG4TdMcctQRUkQ1ixVdfSIMnmj93RAcwZCCRBJlABFEBFniNWEbcTQC2U2dzbFKa2PUdkVvky33/sJvnXw3DHlLtHd/0NIQNtw5nc13hwvN+YcnkHvyx+R/IPW3R3orzjhJJz4eOeWVx3c53IPT913kkoP+6Ohkm322X4WhDnroNy/F0dity81TRrKrXjduYeNetu4DTf17fFkfD2HyyiOYAtTNByhR9Ah2kDT16EGEPYAhbZ/fXt7jJ5DO4V83hEA2l38dtzKrD9yaT7qPHccqy48cg0PYD53BBBiv/2YkE0j7/rcZWLmMgK6ZGwHqh8DSrEpiDdSMpQoywAjeBWIEEZoFN7M4ApBvg3fhH0H8BUIFIeSAJbQLvwySQsKcLyHpa+FZAniQ68kQRQpZQP5ueJYhIKsg/tDjIVYC5hAhauVX/TNiUrjFEBsqkQ/vSsgOnygTESaLijNp1kIYSMUf2gqLGCHiFsF4EST2C4xi7NYUjTgEMx6kgiDUYkl0qEQf8gSOEZSjSejIQyumxIkRjGJK/EdAJvoEAmvcYBur08I/AYWQ7jNkUBCpSDeeRFENdGRUILk9SUqFkgRcpFhQ6D5BSgWPzdPjV0hIvTR+hUvuAxOVEkk9USomft7rIF8A6TVT7hJ7GAxNEH/nSsWwsmnFXMwxh5ZMyizzZqpUzTNX5svYDHNo1ZQNLz2Wzd1MgJYnG4Iu2wMBCHpsQpsbiIFetqB0UvBk0WQcB8BpryGs0J2ruuHkssSDz4V0gJ7VGoIm+3mQ97SLnwQdyT+/JdCEmsQ51UKoQ03CgQ96CgfdnGhCPgBQQQ3hA17UKElo09E0fTSkIiXWNJcEm5ROcqU4aqlLuYMZL+HAMzMVCwf0mSEYZDSnlklBSSM0hBFYEqhAWQAHWDDU/LCAAyhFKpvKAqG13FOqqZnACMyJHa6ME6uqGcoHWGDR1oCtKUcFa2pa8pKmnuUmOYmqWhk3FAt0YCIVAeff3saBkGA1IAAh+QQJBAAFACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAECBAcCBQkCBQoDBgwECA8FChMFDBUGDhoIER8JEyIKFSYLGCsMGzAOHjUPIDkQIjwQIz8SJ0UUK00WL1QXMlgZNV4aN2IbOmccPGseQHEfQnYhRn0kTIgnUZEoVZgqWJ4sXKQuYKswZLMxZ7czar0za740bMA1bcM1b8Y3csw4dM85d9Q6etk7e9s7fN08fd88fuA8fuA8fuE9f+E9f+I9f+I9gOQ+geU/g+g/hOtAhu5Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Ch+9Dh+1GiOtLiedUjOBjkNR4l8WOnrWfpKqnp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gALCBxIsKDBgwgTKlzI0OADDR9KlFjRomILG3Yy2rFhscUKiR80PGhIsqTJkyhTqlyZUEOHiS00ypxJs6ZGjyU6aGDJs6fPn0ALaigR06bRo0jttCixM6jTp1B9Di2atKrVmkubRt3KteuDDyuuih1rc8WHrmjT8uyQogfZt3A19kjRQa3duwgtnMAYt29fGycs4B2M9sEIvn4T+7UxYiThxz8flHCruHLiHiUcQ958csJky6AVY57AufTCCSlCq7acgrTp1wJRr57N2jXszZ9p675c4vZjDYh3C/+r1TfaCWGHK0+8wrbxqLmXS4+L+TlUC8Gna39rQ7D1nyO2/ov3O+I7zwdUx6snu0KzeZMaKK+fP7ZH8fcMS9Df/7Y3/oXo8SfgWC249x9BFsg34IJJ9eDdgQMlyOCEVTkIoUAfKEjhhjX1cNaBH3AoIlIfvhfeiCjaVJ55qaXoIk0pfNfiizRqFKNxM9ao442wnajjj3asaFqIQBZZ4mZEFmkkZxIqWaSFjzXp5JMP3vWAhlP+2IOBaaWXZZEt4KXfl1n6l5YGZJJ5X1RXpvnllmh56aaSK3Tl45xZCvmUBXi6WWVQ2fXppA1QjSkomWb+NAGWhyrZg3M9JdcomXX+hOakbq6pUqCYDuqToZ0iytOiobr5KEs5lvoljyhNoCqe/pCWlOqrWbJakqu0zhlrfrnOmWhDbfaaJpwlgSrsl78qFOyxZBLL0J3MfnmkQpxGqyShDPFprZ8MnbCtmycwVO23QGKbUAfkullXQrOmq6StBC3r7pQ9JJTkvFlOO5Ck+E5ZqUH9pnnQpQFnuaaxBReZrJwJ/xhmQQ1/KVTEBhOEMMU6JsowxjQ+LBDHUw5EMMhANoUuyUWuezHKLvrHL8s03rgxzCM+TDOQBTxw848P7awjRD7XGFHQNEpE9IsTHe1iCjMrvWBFTqMIddQiTk31hhddzeG4Wnft9ddgY8p12NtxRLaAVp89X9pqq8d22+J5BPd8Kaw893JG3z1e/gn36j1dSH6LJ1Lg241EuHYCNX14aA+/vDhtN9r9OGj+nTy5buuOfPlqWm2uG0GKew6XxwVILjpciWp+emL3rQ6aQaG7XhXpApkue1XJqn77WJru3hdCjvte1b8F9S18VfoO5MPxV/mgULvM1wQvQZZHf9S6CY0dvbkJeWu9UeEupO33Nf2JkPbCc68QtOTbkfxBDyzffkY+cJmQ7bsnq6z85Nd/Ev6u099p5rcrhkBvd9NrCK6sV8CGHNB1CSTJBPjnOx80kCQAnJwAT4K+x6lvJbo7naZUEjzPEa8nE5SdBZ2SQb1tkCUdvNsHfzI+z5kPKOxbnJ6gEru2nRAq/vGbnP/QEsK7jbBQi3shDwlHu7QEUW9DxIsFKKg2H9xQLVOEmxU5YzywvQ8vXezaFweTw6vtsDQPPFoEN5NGn62RM22k2RtLU8adnfE5YaTZGH3zASrCzAd7NE4Wb7bFCwlkkCwrpCEFEiCUFWiRBmnht5R4IQ34sV8+OCIkc9ZDZrVnk88q2B1BeRDszKs7pDRJCS7ZKx9QMpUGQY61mgNLlQBHWDbQZC0bsspXuXKXPpFNqFoDTKAI81DELKZTPMNKJbnygso8Ty+z5Er7RdMphokhhWzwAWteMyp60eZ+AHPFb6aFLc3kjw/oYs7XgGVCZmnnc6ayNqbI8z/0I1xOVu65SZeUgGmgaUHddMJPZT4kIv/sSHA4YpG68U0k9wwIACH5BAkEAAQALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwEDBgQJEAULFAYNFwcPGwcQHAgRHwkTIgoVJwsYKw0bMQ8fOBAiPBEkQBInRRQrTBYvUxcxVxk0Xhs6aB5AcyBFeiJHfyNKhCNLhiRMiCRNiiVOiyVPjSZQjydSkihVmCpXnCtaoixdpi5gqy9irzBksjFltTJoujNqvTRswDRtwzVvxjZxyjh0zzh20jl31Dl31Dl31Tl41jp41zp52Tp62jt83Dx93zx+4Dx/4j6B5j+D6j+F7ECF7kCG7kCG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8ECH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CG70CG70CG70CG70CG70CG70CG70CG70CG70CG70CG70CG70GG70GG7kKG7kOH7EeI6k6K5FuO2muTz3yYxImdu5ShtZuksqKnrqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAkIHEiwoMGDCBMqXMjQIAQLFj58SAEDBp+LGC/iqFhRxIcNFiY0HEmypMmTKFOqTAghwwcYQjLKnElzJg4WHyxAWMmzp8+fQAkuiMgiZs2jSJEKgfEhw86gUKNK7TlBBI2kWLNipfFB5NSvYMMKzJACh9azaI/iSJFBrNu3KBdsKJq2rl2aLDYsgMu3L0EIKYzeHUyYjxART/0q/rrBYuHHj2FsWEz5J4QPZiFrfizkQ+LKoEcC3kx6c4rPoVMXHF26tebTqmMTWPDBtW3NnffKpkxb8O3fhHPv9rshM/DjhYVMHu52wlXk0COjZg61Q/TrnDtQjwrBMfbvg2H+TN+esoNv8OjTCtFOXmX39PDDj2+/kMP5+Pi1CmlLf2Tt/ADW9UF/Cy3AQoAIppWCbgSu9lyCEGZFw3ztTXBfhBjSJIQFDQrEQYYgZsVBgymEaGJSI9JX4oks1sTediu2KKNMKcA44400MhcjjjzWKNuOPPYY24dBFnnRCKkRaaSRKVJmwZJQ8uGVYhBcGOWMQlAI1gIPXlkkDQzCdaCXUPoI139kQjngWxmk6WWTYFno5pVZiuXdnFDCEJZ1eHr5IndW9sljnVLdKWieUvF5qJ9QVbkomYT+ZOijUNIAlJKUvunTAoFmGiQOPqHpqZdrqsTpqGkKEeZJoqJ6Zan+JznqKqRaKgTkrFGaWRIEuM5Z60G39lqmSbwK6+aqC7VqbJSwMtTpsjyCOhKm0F4Jp0KTVrukngwVqy2Zv47wbZq6HnTquF6qqhC16EJ5bUFjtnslCwrJC2lCbdrrJX8GBatvkOUOZNy/S0pb0AQEeznlQMomHCSSBXXp8JerTXxlmPlavCSHDGusJkHZejwjvQM9K7KJBnt7cpC6Zbwyj/w1/HKLa8Y7843cDnyzjEIItHOQBCD8M45DDY2jBewabWJESs/YgbhN0xxy1BFSRDWLFV19IgyeaP3dEBzBkIJEEmUAEUQEWeI1YRtxNALZTZ3NsUprY9R2RW+TLff+wm+dfDcMeUu0d3/Q0hA23DmdzXeHC835hyeQe/LH5H8g9bdHeivOOEknPh455ZXHdzncg9P3XeSSg/7o6GSbfbZfhaEOeug3L8XR2K3LzVNGsqteN25h41627gNN/Xt8WR8PYfLKI5gC1M0HKFH0CHaQNPXoQYQ9gCFtn99e3uMnkM7hXzeEQDaXfx23MqsP3JpPuo8dxyrLjxyDQ9gPncEEGK//ZiQTSPv+txlYuYyArpkbAeqHwNKsSmIN1IylCjLACN4FYgQRmgU3szgCkG+Dd+EfQfwFQgUh5IAltAu/DJJCwpwvIelr4VkCeJDryRBFCllA/m54liEgqyD+0OMhVgLmECFq5Vf9M2JSuMUQGyqRD+9KyA6fKBMRJouKM2nWQhhIxR/aCosYIeIWwXgRJPYLjGLs1hSNOAQzHqSCINRiSXSoRB/yBI4RlKNJ6MhDK6bEiRGMYkr8R0Am+gQCa9xgG6vTwj8BhZDuM2RQEKlIN55EUQ10ZFQguT1JSoWSBFykWFDoPkFKBY/N0+NXSEi9NH6FS+4DE5USST1RKiZ+3usgXwDpNVPuEnsYDE0Qf+dKxbCyacVczDGHlkzKLPNmqlTNM1fmy9gMc2jVlA0vPZbN3UyAlicbgi7bAwEIemxCmxuIgV62oHRS8GTRZBwHwGmvIazQnau64eSyxIPPhXSAntUagib7eZD3tIufBB3JP78l0ISaxDnVQqhDTcKBD3oKB92caEI+AFBBDeEDXtQoSWjT0TR9NKQiJdY0lwSblE5ypThqqUu5gxkv4cAzMxULB/SZIRhkNKeWSUFJIzSEEVgSqEBZAAdYMNT8sIADKEUqm8oCobXcU6qpmcAIzIkdrowTq6oZygdYYNHWgK0pRwVralrykqae5SY5iapaGTcUC3RgIhUB59/exoGQYDUgACH5BAkEAAUALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgIECQMGCwMGDAMHDgQIDwUKEwYMFwcPHAgRHggSIQkUJAsXKQwZLQ0bMQ4eNQ8fOA8hOxAiPBAjPhElQxMoRxMpShQrTRUsTxYwVRgzWhk1Xho4Yxs6Zhw7aRw8ax0+bx5Ach9DdyFFeyJIgCNLhSRNiSZRkChUlipYnSxcpC5hrDBksjFmtTJouTNqvDNrvzRtwjRtwjVuwzVuxDVvxTZwxzZxyDZxyjdyyzd0zjh10Dl31Dp52Dp62Tt72zt83Dt83Tx93jx93zx+4Dx+4Dx+4T2A5D6C6D+E60CF7UCG7kCG70CG70CG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH70CH70CH70CH70CH70CH70CG70CG70CG70CG70GG70GG70GG70GH70GH70GH70GH70KH70OH7UaI60uJ51SM4GOQ1HiXxY6etZ+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAsIHEiwoMGDCBMqXMjQ4AMOKFi8uEERiqCLGDFSvCGDBQkODxqKHEmypMmTKFMmvBCChYwbGWPKnCnzBg2PF1Tq3Mmzp8+CHFjApEm0qFFBN1hw+Mm0qdOeQYcenUp1ZtKlT7Nq3VrgAQkaFquKHSuTRgiuaNOiDCEjLNm3cAVBkXFWrd27BC+8KBK3r18oL3LiHZz1AQoefhMrLkKCsOOeD1i4VUy5LxQWIR9rJjlBcuXPigFP2Ew64QQZoFNXljG6tOvTqmOvbu3acWTZuClfrk2YA9/cwBMXwcob7QQawZMrpkG7+FPPyqP7xey8qW/p2P0WEVydJ4vs4P3+ouiu84HU8OjJ0shMviSHyenjV4VCvH3D7/Lzk2Vhn6F5/QCOdQN7/RV0AXwBJljUdgUaiKCCEM4EBXcFkhDhhUdB0ViFGHZo1IbtoeDhiETxRx5qJKYokwzdoajiixixWJyLMNYoo2v41aijICBuZuGOQPbo2I9ABqnZgUUmSeFdSCZZ5ISDPfCbk08SmBZiVDp5w105ZpmkiWhx4KWX9RX24Jg6QmGlU+ehmeSWWonoppdgNnXBnGiWCdmUeFLJg1Nd9kllnTxNICiaUDS3U5uHOkmDT2I2mmdPfEpKZRHeWeomoSZNcKamRSpaEo2gZnljp6XOKapIpKZK5an+IxnqqptrMgTDrJuW9MCnuO6oJkmB9jroSLsKi2itBxFprJfjNVTpsk7+ydCd0KK55EG3VjsmDAzxqm2NmCoUwrdo1oVQq+QWCWtB3qb74q8Hjeuul0IOhNy8WT56EL5eQnFQpPxSeW2wAe/IKaMF6wgnQQlnCVTDVNZHMMQw1okwxS8uXADGTg5ELcdACqYsyDXWNTHJJJp4L8o2CnQxyx7CCfOOXc2s40M218iBCTnDSMLLPacHBUUweMQBcUAEjV4PNrGgFAerFvSE0rkNfUPRH+lJ0tRUJ8b0TU9HrRPXXWdIkdMfXbtV2TEx3dHTyOLVs9Voc6A2bxy77fT+0XHbNy/dRt/dIELG6g334DtZ2sgllzjiSEw8cLQ3SIjrhObiXTj+19mBV96Qjow3/jh2kb/Nt+cCdch45iNa/YLRWvPWiHyha+5m5GAfLfZdZAe3+ujGug4776nVDjzGuE++e0q9j/U72zIJn7VKSRdlPPSJJR82Q0M9j7100h89EM/fQ/hR+RCChL6CIa2foMvu6wfnyvGnJ+PJ9Udn4sj5Z1fXx/0DD3cCiB6CAI2AstEY/hAYmzoBjIHJKRMEo2OQA06QMhoTyAIvqBhOPZCDqlEbCGXjr4PQb4SV0ZdB5IXCz9RrIO1q4Xzihi4ZvmVdBGGhDftiLoTEcIf+RDGCrYAYF24tBIBEFIvgCGKEJI6lByLhnxOL0qyG/NCJ8LrPFKfCKYUUa4tEyaJIsgXGmXRxIbIqo0z6lpAabhGHDUmjGi+yPIW4MYlwFImn5iiIOi5kgzI8Y0maCEYh8uSDSYzdSSwIQhUWaoqJYgogJyjIlDyAkDuEolOQ2EJF7kROgdzKCTmYQad8EYRizAoiIehJSYKwkk7pwQUdmZZLQtAIbHxKkwIIJcLssn69HFIAX4gXKX6PmIOZZM+QSZg7Ki2Pj3FmzqCpGWnCjJqbASXVYFkaY8KMmbzxJsig0MP+/BJlwRzcOTlmhCW25z8kGxDqCKLMb3GzQe+tgRh95okQeAZsPfxUSD1nVcWAJoQDmPxWOw0qEuhUizoM1eMoZ8WciJoEob0yQistKlBX7YajKoGNplgD0kJZM0kkLalPInNFFV3Gjyo1CUuzdJlcxlQlhpElkIwAzpv+5AIwSOiIjAADd/r0KWxpKXjmUs6j4sUrYFGQWZzKmwsIJT5XoWp7oqKcoSlFq5VjiUsYWZWmkcCoYG3QQyICg40IFSNWu5rRbBrQgAAAIfkECQQABAAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEBAQMGAwcNAwgOBAgQBQoSBg0YBw8aBxAdCBIgCRMiChUmCxcqDRsxDx84ESRBEidHEylJFCpMFS1QFjBVGDNaGTZgGztoHj9xH0J1IER5IUZ9IkiAI0qDI0uGJEyIJU6LJk+OJ1OUKVebK1qiLV6oLmCsL2KwMGSzMGW1Mmi5M2q+NW7DNnHJOHXQOnrYPH3dPH3ePH3fPH7gPH7gPH7gPH7gPX/hPX/iPYDjPoHlPoLnP4TsQIbuQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQIbvQIbvQIbvQYbvQYbvQYbvQIbvQIbvQIbvQIbvQIbvQIbvQYfvQYfvQofuRYjsSonnVIzgY5DUeJfFjp61n6Sqp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACQgcSLCgwYMIEypcyNCghAseRpyQQVFGjUAYMwa6QfHEiBEXQjYcSbKkyZMoU6pMKGHDCBk3NMqcSXPmDRcgJazcybOnz58EG1wY4cJHzaNIk/qQMWJDA6BQo0rtWeFEzKRYsyatAaLC1K9gww7csMKo1rNoa95Y4VSs27cnG3gom7auXZouPMDdy7dghRV3AwvW6OOEzr6IwXqQMbixYxl6E0vu2WDEVceYBxc+PLkzSQmAM4vGvIKz59MOQ49e7bg06tcEKrOejdnHiKewJ48wS7u35tu5+3q47Lu4YB8ggr+tcNG488YyTCuPOuK59cbIp0eVwPi6d8HRtf77BMH7u/m6tsWv5H6+feAaXtWb9FDevf2zPjbIJ3nivn+7ye2nUAMu/GdgWivgJmBBEjR34INZ1SCdgBXUB+GFNfmAwYICeYDhh1lFtl91IJaIlIjiqWbiijOhqJyKLMaYUYAvymijTCvUeOOOGOUIm4c8BunjaUAGGeQIRBqpZCAu9oXBkkr6EB9iElgIpY0+TOhWAw5eGWQNCsJVoJdLusAXiWQuiQJcG6TppX5iVejmlVmK1eWcSsoQFpp4Qknjdn2SWadU3QV6pZ5RgWBomkgCVeWiaU7ZU6GQHvqTopWm2SRKDViZqZE39MTnp1c2qlKnpKbpQ5gnjZoqlP6mnvToq2lq2RCMtEI5ZEkS5DqnrQrh6uuSuzbU67BusroQCsi6GStDnjYbZKgjFSmtl5seROm1UCK60LHckikpQsyGS2axB0Vr7o6rKmTtulBmK9CY8F6J7kAN1CtoQm3q+yZCwvrL470EECcwqAdVcLCX4xLg6sI8rlnQnRDzSC2+FV8ZZr8ZK7nhQA93bGOs24p8o5kDqWuyiReDuzKPhz35cpBwhjzzio3Se7ONKBux84o14LTBxwL9DCEQMqwwAgbAdmC0fRyNAAIGyiaE6dPPBT2CB0SjVALWvSW9dMMrlQz2XRyhMHXVP9Fwtl1ac80XDm9jJfYGZO+l8v7PSKvNdG57i1wDU3KrR8TOd+ctnsh9Tw3sggdHzTXbHBq0rgxCK175Qsj2vfTjm5OUqiOOdJLRUkpfAHroDS3ayetoYd6U5qwflGYnjkRiemaSX0B57Y4YSfruzy3lkeq1D3R4jK8T/5/seG8eeHu5Ow804RfIN71zw7tpPAjIw0b3ec2/mnhnM1hX/bqDb539XmZjhrv1EHN0Avi/8/S1/KXXLfYFtDPJ1eqyvrptBSceeF9KnJaV+RmwMfbDX0lq0r0H+uZ/j/NZ6ehnwetobQMKJIDOOmgglNmMhO1plMxQaCA4uYyF9+EMEGDon4sRIH40vA7KBHLCHDonVv4c86F5upYvIZ6HVRQzonFsyEMlekdiBFGYE61DNoNNkTZMHEjArjgaggWRi7OBk0GKCMbZAEEhIyxjZgjWITWyRl4CmaEbMwOE/JVrjq1hyAvxGJgA3pCPg/HWQt4FyLTAsSByLGRasqiQOyryLM/61iPTkj+DbHGSOJIVJrOyuoNccpNs/FYiNzmTTiKkh4+MZEkaMEpSBqKOO0ElIP+UEla6EiOMRMkAN3nIkuCQj4LkiQRaqUg/lmSXhaSlT35ZxmD+ZI9zBIIpUSJLJyoTKkkEozOjUgFiclGabvkiGMUolmrCEIpv+SQNdwgXLnERTFTyJg3BmZgVChEIxv78CiFh2Eu37JOEqkzMPx8YSsSY82cFTYw6jZZQySz0Zv2czENXFtHOHDRjFfXMQF+W0dN002hA6NqCGrQzCdWOQDNLUPIE4siMXZN1HpBnvUK6Uocwk1vwqSlCQCBTaQEhoDoVCHvgFZ6gLuSikALCS41qkArcNFNFZWq1rEgqpUqVmj3t008reVWEyCZTW+3qTkADKZWKtSdkxZNrzgqUylCVR0BAwTTZepLF5KmjdE3JX24U17nmlSdyWUFW/ZOXv06GLG9tz1raYliPoiCxWetKY6fTAAwQBbKiQVpTuDpZ1LTkJZhdJE6o1lmdSgADEUFBRSxCk8HJAAUfwQcABvJZu4AAACH5BAkEAAUALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwEDBQIECAIFCQIFCwMGDAQIDwQJEQULFQYOGQcPHAgRHwgSIQkUJAoVJgsXKQwYLAwZLQwaLw0cMg4eNQ4eNw8gORAhPBEjPxElQxInRhMpShQsThYvUxcxWBgzWxk0XRo2YRs5Zhw7aRw8bB0+bx5Acx9DdyBEeiFGfSNKhSVPjShTlSpZni1epy5grC9jsDBkszFmtTJouTJpuzNqvTRrvzRtwTVuxDZwyDZxyTdyyzdzzTh0zzh20jl41jp62Tt72zt83jx93zx+4Dx+4T1/4j2A4z6B5j+E60CG70CG70CG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8ECH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CH70CG70CG70CG70CG70CG70CG70CG70GG70GG70KH7kSH7EmI6VGL4l6P2HSVyI6etZ+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAsIHEiwoMGDCBMqXMjQoAURMiLW4EFRyKCLF6FQ3FhDhgoRERqKHEmypMmTKFMm5GBCxg0eGGPKnEkTI0UZLjio3Mmzp8+fBUXUsFizqNGjUHLIEAG0qdOnPjm4gHm0qtWjPGSYgMq1q1eBEVTkgHK1rNmiUG5s/cq27UkTN87KnUsz7Vq3ePMOtFAjCd2/gDGmZaq3MNewRAMrDpxEheHHPiPIILu4suIkMkJC3kzSwmTLoBdDqWGBs+mEFuKGXl35RunTsFOznm35hmbYjyXT3l0Zigzchk345U38MmHgbC3kKM58MY/XyLl+bk49cOboTkUkrs6drhCd2H3+yuhOHjAUF+F3RqBavv3cHLfTkxRB2b39s1COy284/r5/uTXsx1AEy/1noFlCxCcgQRwMd+CDVn23YEEm1AfhhUZBAd6EKmDoYVVQ3LVfhx+WaJRjI5qoYlEBpqfaijDKdEN4L8Zo40UzIlfjjTfmCFsNPAaJEYqmkSikkERCZuSRSG7GgYVMBqlfXk9GGaWGhUWwnZVCJqEgW1tyKWQOeQEpJpfotSXCmWdOCVUEULJ5JBRfOlWgnFzy4JULeLI5A1cc9Cmnmz1pKSibQjw1w6FypvmTBYzKCQV0PbEXqZhk+rTmpXKKqJKDnIrpJU+LhirnnyrBaSqelJq046r+XPpoUqCwsorSq7VaKetIkOaKZ50LmemrnyWpOiybdJJU6rHEjgQqs1wm29CS0IqZpELPVmtlogxtqi2brR6E67dMtqhQnOQymcRCJqTbqULjuivkrgWhK++RwLZ775nXDhTvvjxmWpCxAFsJxUH6FszlhgMtq3CUjg7Uw8Nc9mAQxWIGhTGX+jm8sZCoCuTDx1FaPJAlJPPYQw0mUIpCyisOcYMKDBf0L8zuJZHDDIQeNDHO/kXRwwwtm7QE0O0NUQPNOz2BNHVJ3OBCzyg9zZvQPAO70wZWr7ayCuE6xWfXgcmcU153kl1WFDuD9NjPah81dNGm/RA3TTIzjZz+EncPovPU+zltNdYmaB2d4DB/XfOEBSBOcdSAM56QFAqznbXkDaEs78p0Yz4SuWYv7vnnx+rM8+g95dpJIRfpvBTqPJnK+lFCSC067AsdujpgPLAcNu4FTcHm7qFptJThozseJPHMQU615MrDqLl9vevtefQeFjL7hcYXzjjfHjIfo+vPn2b3g9NzWbv1uMHd3urbM5pV55ulXZ34tSZ1/GNjM4f/t7WLnFu4tptOpI9i1ftdU1jzP5gZz21PoZxiGhi3v5WvJEejywH7ZhQhLO12I3HfUeDHQfPMT4EJuRkFS8gYpVxQIC+bSfxYSJwAgrAAg1ghDanTO/oVQAf+O3yQyQTisSDaJ2QF8JYR7zOlJf7HICJ0YneG2DApuidiAkmYFbsjuihssTtRQMjNvsgagVGIjNXp10C8iEbmaG2MbVwMvQiixTjOxlMGYaMdWbOuhcBxj3MxV0KUCEjLoHAg2SokYIYgEmopEjBqREgiH3mWKCCPIEWk5FmQOCA9arKSlyyIsD5pFk42pFekNEsoDfLHVA5ijqd05VUOCS9ZHgWWIomAJ20pE1ouJJO8NOVJJunKUfGEkLx8oUii6Eoz8gSVtoyCL5XFy0FgsVBDsCUjn0IrVyrzJP37pDCBYj9FUvFNuwSkJdmCzD1+kyej3OM1vZJNQDqTLRH+qGccjUmldFoxCjf0Cgf86cR3PsWRToxkXhAaRIXqJZ4NBU4rrSZI2EwUaLjkzEVTltEisbCi2GHo0xwKHJHCLAp4lI8ICEoygHquQU8bQkDTQyCgDWGV6QnnxsbpuZVuLAoG3U8EmCkv+AAPIcD8VhTmedSBiECf6ZJpUxniApb6agY4PapytNWDaU51IMIpXVC/WoAIJJVRSyWrSmRjKtuo9Zkb5ZFr3vqoGVhVSFEgDV2dYta7jg+rez2MCqDKo8YEti18ISaGonCDmR7WKXAxEWNT+li3hCUHfuXOZCuLG6kQlTpz42x6hELY3VhurKKFDAdEMIMbfHYuPdgZ2dlSq1XWzuC2PcitCIWm26HN4CNZHV1AAAAh+QQJBAAFACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwcCBAgCBQoDBgwDBw4ECREFCxUGDRgHDxsIER4JEiEJFCQLFykMGS0MGjANHTQOHzgQITwQIjwQIj4RJUMTKEgULE4WL1QXMVgYM1sZNV8aOGQbOmccPGseP3AgQ3ghRnwiSIAjSoQkTIclTosmUI8nUpInU5QoVZcpV5srWqEsXaYuYKwwY7EwZbQxZ7cyabwza780bcM1b8c3csw4ddE5d9Q6edg7fNw8fN08fd48fd88ft88fuA8fuA8fuA8fuA8fuA8fuE9f+E9gOM+gug/hOo/hOtAhe1Ahe5Ahu5Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bhu9Ah+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Ch+5FiOxKiehTjOFjkNR4l8WOnrWfpKqnp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gALCBxIsKDBgwgTKlzI0CAEDhxUqLCRI0cTPxgzYqxYUSIJiA1DihxJsqTJkygTUgjhIkcPjTBjyozZw4YKDhRS6tzJs6fPghFtXJxJtGjRJjlchIDws6nTpzw5uHhptKpVozlQYIDKtavXgSFmDL1KtqxMIDOWfl3L1mTYsWbjytVog0Tbu3gLYpgxt69fjU1c5MxLuCuJHH8TK85ht7BjnhBUAFFMWXHgwY8zi6TAt7JnyjMwax5tkIKNz6grz2BKujUEF6ljU26ignXrxyrgyt7dl7bt23dJTOZNPHGTEMDbYkBcvHniHKKTP1XhvLpxFNKfUqBqvXvfHFuz/vdEodu7ebMqxOuEwPy8e7k9oqsPGaL8+/tWm3SYP7Iz/v9mYcffQhCcBuCBZa02IELbIeggWT2Et+BAGNj34IUxHTehQCRYiOGHGjU2IHUglliUiOr5Z+KKMaEonYosxphRetnBKOONM0gH2408apTjbST0KGRGP44W5JBICpjZkUgi6WJeITQpZRMS5lWhlFPKtxYE3GGJZA+/sWWgl1LagBcKZJJZ5FcdpJkmcl9R4KGbPDYR5lNd0illDl6RqCeZSjqFwZ9uNqElT+0R6mUPT6GpqJs0+iTno3RWuVOilHrJZ09MZvomZHN6KiQQPPkpapqBmgRBqKf2aGdK/qa2SmakJU0qK52HMmTjrViuuRmvf+aa0K7ASukrQxQUq+erIu2oLKQjsfosj6SG1Om0ZD6JEKbYYrnpQsl2WylDzoqrJkPSmitjEwtdqy6WcCI05rteHjsQBPQWmpC7+TYZb0HE9iukvQWkK/CK7Bo06MFkWlpArAwj6YJBUETcZA4qOIyvxTz2oJRCLHDMYhAzkHDnQTuI/KETNmhFEhEqO4jxfidlETN+HquV0gY3n+dEycKSBHHPvLXsME8pE81bDyrQzBXMSqMWhFInP1Vx1IqxTELQT2H9V1ZHswWC13F57PRjjpJtFMkm3/aC2jOxjALXhXFLNsZh32Y3/tE5bwi10mzTnZwSPcud94KEizzzhgtJEfHUOjO+kMA/by35SPQafblJ4jJ99uYlPUty5KCjxKsgkmCEFumlc35qJEV5zEHrrj+Kulma094QoZHY/FcTQOue0BRp3p4aEFQLT1DiTUaSenNMzy488zwab14TuYP+N4u9O4iW5ZInXaL1IOZctXR7A0i+jHjz97aDzpOJ/dzZpX2fIL4T+v35hI393vOtkh1pzLM+YIHtMVcrTvfohT3w3WV7qSmgwFbHv5+I7zOwi1r0+uQZCWItez/h2V8WCLeZAM+BPMmgWTxYQqIgj3UmgaBR4tdCv2BMeia54ExYWMO5zO9w/gcZmh9I2EPZfI9uG8sIAItYnb4p5Ak8ZKJz2mcQ+0kRPxPTyxUPdLQgbBE/TkBIwL7oHIJFiYzu+RdBkojG7oQxIfNqYxkVwi858kaNBnGCHZ3zRoWUa4+7IRhBwgVI3gBRIOkr5GKspUjZaAshemzkZ4Iwkj9KMjG0QtYlK+OEChpkjJskiyBVEsrECA5gpezLKBVCgUim0iynNIgQX0mUTJIEAq6kpVE6qZNZ6lIjqVJVLn8ZE0ry5IzElAkeUZJIWn6LJ61MJkwOSRIrEtOWiJKmHxj1lIUR0wmxFFoyg9mUPJXymVCJ5it5ySZaLhMq1mzkKp0CyjaaCS9c/rokmAiDgWHaEZyOQeYenUBNwxTykXip4xXJWRiFFnGeePFlCyGal3qSjaKEsWjUGNoajfYMobeRKNFAChwS+DNqJE1OP8nmhHfOp0EaDOdtCqQ0BbXOo+riqORCcNJ+OeFztGOPxeKjvIKgoKfiwmZRYfou6BRVISKVlRN0+lSBLKdbTq1qQ0LgxWK1VKvVRKqinFAbsJYkMqciqyfNqhKcDsmmbE0JZwgVmrj6JDJdxZITBGPXpxzmYintq072wqO9ylSwKAmLWAFUF8QWRrEOGt1aHesVDEzlPgekbHI6MJHFcjIpMNSsdFbSEnP6pSZNO6xogdMBzk6kIid1CwJHMKYCErTWrgEBACH5BAkEAAQALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQABAQECBAMGCwMHDgQIDwQJEQULFAYNFwYOGQgRHwkTIwoWJwsYKwwaLw0cMw4eNg8hOhAiPREkQRImRBMoRxQrTBYuUhgzWho3Yhw7aR4/cB9DdyFGfiJIgiNLhiVNiiZQkChUlipYnSxcpS5irjJouTRswTRtwjVuwzVuxDVvxTVwxjZwyDdyyjdzzTh0zzh10Th20jl30zp51zt62jt73Dt83Tt93jx93zx+4Dx+4Dx+4T1/4j6B5kCF7UCG70CG70CG70CG70CG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70GH70KH7kWI7EqJ51SM4GOQ1HiXxY6etZ+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAkIHEiwoMGDCBMqXMjQoAQNJCK6mAgjj8WLFolMdHGChAcNDUOKHEmypMmTKBU+JKHCBcaXMGPCnEgChIWUOHPq3MmzoIcTLmUKHUqUCAsSIHsqXcpUpwURQYlKnTqUo4emWLNqFdgAhAoiVMOKFUpExdWtaNOa9MBirNu3McueVUu37kAJJ3TA3cv3YtmkdgM37Vqxr2HDMEAIXrxTgorDkCHrINGAsWWSjiNrhkzkhITLoBNm3kwasoqboVOPLs368InKqRk3ONG6NmcRsQV70Gu7t2EdgHNvldDWt3HDLj4LzyoC7PHnfU8sZ2qhMPTre2Ggnq6TNvbve4n+4OaesoF18OjdsoBNnqQG5+njjyUSvD1DEfLzv5Vuf2GD4voFGBYM7PVXkAW8CajgVDAoZ+BAIMC34IRDEbGdgSBQqKFURMxlX4YbhjiUYh+KaKJQKrT32IkswpTidCu2KONFL+YW44w48pfajTjiSCJoIPYoZB4/MhbkkEIWGZgFEiLZo5J0MemkkxYGZt6UUxJo13lYDslCXd51OeV4aGkgppj1DdbkmUMSUWBTALI5pQta4SenmDouJeWdYl7YE5d8OgkDU2EG2iWZjRnKJhEO6hSVol1+uZMHkMrpYUoJVtqlDm+aRIKmcuZpUgNrgjployXxaCqWNZZkwar+d6IqkqqwTtmqSBLUKqebqeoqJwkkkerrop0q9OmwbAIrUqbIYslrQ0c22yWUCDErbZYNmXktm7IaROu2SIp6UKngDqnDQpSWe+alBX2rrpC3FkTuu0IWSwAK9GJZhFkJ3ZCvuSf4eVAT/86oQ8Ah2VmwiQcLvNCjC08YgwjdNjRExBJTjBPGAk5cMUnHcpweCyB8bBLEIj9Hsr04/ZAydCtnRfDLtu0LAss8dUBza/uym5UJO2/Wc2AoB/2WDvwu1oPRezUM2sVMi+V0alFTNXVsr1YtlMfcKaz1RVy3t8LXFoXdX9E0k2zydGhzHPODBUH98ttwGyR3xDbjXPf+3fkOXXdDR/zr998h0Yu0z4QvVO7ViZN0LeONl4RsDAhHvnGtg1gEueWSm5p5TJtz3pCmn0sVuugIKVr6WIejvlDgcq7Ol1yuH8S3k7JHRnvtAt2O4yAz91bWza77ziLw4NHdeNsbIp+f8nUzv2ATuevHgsZ1jy0i9SfCgH1/Xk9fvYnerw1aBRMOMv6M3jtMdYDrO3m6ZcZDF/+Z8wfGA3r3B5q/WtJjTf80tTvBAO04A6xVAemis94ksFkLREtrnPcyoxBvKy7TDAWjBj2lBJAqGyRbHjqok5DBhXsiFMr1zOe4t6AwhQz6Hk7qF5MXwnAs5cPJB9V3w8O07yT+4XvJA3sotcqNJHgXGSIR4fI/gvjLIkhcom+aiAIlSnEzESxIEa4YH5a5i4u+iRdB0gVG7CBuIFssI3TOtZAvqrE04jKItt5oHBbGgI6+iUFIooXH0lCrWn3kmd4IYsJAakZZIWlAGg0ZmSIMsl2MPGRJchXJwzjSJG6s5FTE2JCsaXIvLERIJj8pE04mcpGkDEsoExLEVA4ljiWxlitB90iGzHGWQjljST5ISkklCpcxKcIqQ1IoYFoEUTy5ozHL1hQLoBKX7tNJK0kJS57EKZV00ooiZ3nJrdzyk2nCSjEjicytKLOSvlRLA85pyBjUUikSeCYdixDNrTjTkH/7VAsfy5hPuuzziv2syyhFGFC7DFRriIzNQZlmysuMM4UNBRIRIxqaf0atoKmx6M6KoMvlgECeG60ndxAUtRgMMzf/MZo7OTfNhVXzbxoAad/CGbl1Ymw9vBvIQ8FVhHLyzgLsBFcMROo6EcjUVy/NKQGIc63kKLUhuxkWcJ4qktnUqqdUneRCp/SarJ5kNYFSwUm96hAVHHVIRfAMWXfSABKcVUaTeedaEwmCoM4oBhidK0rwIssN7Yumel2KB7b6ncEFVp1eeSt2DHtYwTyFl7WxSmOF8xPIGqYIRwHsZGOzkpZohiY22WzkHiICiUzErhYpwkY68pG1BgQAIfkECQQABQAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQMGAgQHAgQJAgUKAwYMAwcOBAgQBQoSBQsVBg0ZBw8cCBAeCBIhCRQlChcpDBouDRwyDh42DyA6ESRAEiZEEylJFS1QFjBVGDJaGDRdGjdiGztoHT1sHkBzIER5IUZ+I0mDJE2KJlGRKFSWKVebKlieK1qgK1ujLF2mLV6oLmCsL2OxMWe3M2q9NG3BNW/GN3LKOHXQOXfUO3vaPH3fPH7fPH7gPH7gPH7gPH7gPH7gPH/hPX/jPoHmP4PpP4TqQIXtQIXuQIbuQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQYbvQIbvQIbvQIbvQIbvQIbvQIbvQIbvQIfvQYfuQoftRojrTIrmV43da5PPgJrAlKCzoKSrqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACwgcSLCgwYMIEypcyNCghQ4jUri4QZEilYsYh1RMwXFEBw0NQ4ocSbKkyZMoE1oYweJGDowwY8qciTGHixQdLKTcybOnz58FO6SYMYSm0aNIqdxgASIC0KdQo/YEweJl0qtYad4wAVKq169gBYJwUTSr2bMxh7gY4TSs27clx5ZFS7fuxRkg4OrdG5Ss3b+Ah7DQybfw1xFWASsGfIOt4cc9I6TgsbjyYrWEIWsWacGv5c+LXWTeTNrhDNCoLYsuzbpABBapY1tO0bb14xRzZev+O4S2bb4gKO8ernhI3t9uNdwgznzxjNHIoaZoTr24iehQNSSuzr3uja7Yef6ayN29PNoU4VNGWG6+fd0ctdOLBEHevX2sQzrIF+nivn+61+2n0Hr/FXjWDPEJOJAF2xnoIFI5gKdgARrU9+CFMxk3YQEjWIjhhzGNoKAJIJaIlIjy9WfiijShiJ2KLMYYE3rRwSjjjRe5gBxsOPaYo20j+CgkFTqWFuSQQgao2ZFICumiYUw26eMQEu5VoZRIDgHdWxE0iGWP8PF12pdN3rAXiWRKyQJcHaT55XFgWeChmzgOkWBUXtIp5AxgTafnl0pm9yeZWkqV56BC5hAVmoh+SeNPcjaaZpU7sSfpl2b6BMKlbsKp3pyc+shDT36GSmagJkVqKqF3jmTjqv5YrnmSBbDSuWVIr9YqZZEk0aqrm7culOuvTfIakq/Esupqsm4+ylAEoDLb46ghRSktlk8qZOm1WGa6ELLcfqnfQtuGWyylBl1ibpM6OMaQCusKaQQL6CbUQ7w4zpBtQxHgG2MPJgTLEI/+fmiEC+OiJFzBD7bbaknqMlzgvAKXxKjE9uEFVbkYcwdwxSkh0XF3ByccVb8jU+dwWCikTBzFcOHgsm4a7/XDzKgB/HBYOFt2cL1vtdkzY+5CtsLQdfUwGGsyI21Wza3d7HRSOkcn8tQ0/Zwe1jM1tjNrH3CNkdIgt3ax0y54KmALU+tgwtfhcTyy1hsWdCjDjdWN0P69I/eQQtkTRstt2nozJHiybsNduECH10r34g0tsW7ekI8Urt+AV17QtQhrfhLiRXtekq6GeEJFDm+L/vmqpstEuOqWc/pI60bx8DfskUsacVaU445Q4z4awpsLQKsOvIylW4a64osfvyLtqL2OO99Nzk6c7ZkLeDeLhuxOXe+Vy829fWoVvx/bNyZfIA+p6312idA/CLWCYZv4SIw8LK0giN376PV+SbiQ8JpUvvT4wEDqIxP7mFeYpt0nfnSaX2mO5p77hSp/2QuL0LrTP139bzMDpI4FmaUWkxVGasSx3rrYl0GgOFA3EIyXBN3SMtmMcGSCaaF6UtPBoeUgdP5euVplbji1EoJFfGdRodhgwkKpvO8sMVwiTGbYEyJiJYRSTEoOgbKwq/Qwi2b5IQMXQjCkWBGMaOmcerAoEyWiUTHYQwn1YuK9N35GXyaBF0zYaMfUCMZ8BrnfF/s4HDGGBImEHA7xGAKuRFbHhAhBpCNj462FWGuSw9kXQiJgBEwypwfL8uRwUPUtUe7GCGMUyLBMWRljHYuVsdFhAVYJS7u4kjO1/IwsBVKqXP5FVifhpC//gsqd9HKYZyFlSYSJzLOAcirNPIvaUjKmaCalkjyxQCetiRRAkuSJ3MSIs34iyWbqQCoaCKdMjLDLhhwznMoEig7UeZewaFOdxf7UoDqn6RVw1hKYb6nmMLHplgjMc5g6SOVPNLDNWrLzMZf0pBG8eZhaapIvEU1kPAuTUTveUjNlJORHN0NLKY6UNCXl2jh/k1KnXdQ2/nSpgkbQUK69NDoM5ZoR+CkfCxwUaTqgKHIINDQEaS6kI9to3UBQU4kZAZKVI6rEEuo7gZigqetaKe408FNzfaeqB3lnsoyg1Koq51rPAStDQDBHWO1UrSK5qlt9A1eRvCZURqBrXXsl0D+5QKF7LUhnsIql1QSWJ5Jp65AO1s7DImQE5SzRBx0LlQ64gLAgIhtl3TIWzBqIipsFS2cd1IO1ADa0QKFKV8uzFaGiNmhD8SksaIywlKa8Nj0raclqAaODm+TktouLAEQkUhGLxIS2FOFICkDwkb0GBAAh+QQJBAAFACwAAAAAwgDCAIcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwcCBAgCBQkCBQoDBw4ECRIFCxQGDhkHEB0JEyIKFSYLFykMGS4NHDIPHzgQIj0RJUISJ0UTKEgTKUkUKksUK00WL1MYNF0aOGMcO2keP3AfQnYhRn0jSoUlT4woVJYqWJ0sXKQtX6ovYq4wZLMwZbQxZrcyabszar0za780bMA0bcM1b8Y2cck3css3c804ddA4ddE5dtM5eNU6edg7e9s7fN08fd88fuA9f+I9gOQ+geY+g+g/hOpAhu5Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh/BBh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Ahu9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Bh+9Ch+9Dh+1GiOtLiedUjOBjkNR4l8WOnrWfpKqnp6eoqKipqamqqqqrq6usrKytra2urq6vr6+wsLCxsbGysrKzs7O0tLS1tbW2tra3t7e4uLi5ubm6urq7u7u8vLy9vb2+vr6/v7/AwMDBwcHCwsLDw8PExMTFxcXGxsbHx8fIyMjJycnKysrLy8vMzMzNzc3Ozs7Pz8/Q0NDR0dHS0tLT09PU1NTV1dXW1tbX19fY2NjZ2dna2trb29vc3Nzd3d3e3t7f39/g4ODh4eHi4uLj4+Pk5OTl5eXm5ubn5+fo6Ojp6enq6urr6+vs7Ozt7e3u7u7v7+/w8PDx8fHy8vLz8/P09PT19fX29vb39/f4+Pj5+fn6+vr7+/v8/Pz9/f3+/v7///8I/gALCBxIsKDBgwgTKlzI0OAFDSJMSIRBcQifixgpalRhQoSGBw1DihxJsqTJkygTTtBgQoUNjDBjypyJ0QYMFCImpNzJs6fPnwQffEABg6bRo0j5DGFhQgPQp1Cj+rxAomjSq1hp2kDxQarXr2AFPhChwmLWs2hjDlHRNazbtyY/sEhLty7MtW3h6t07cAIKs3YD213rlK9hr2OtCl4sGIaIw5B9TijLuDLjHiZARt48crLlz5XX6uRMGqFn0KgrsxhduvQDFKljW0ahuTXkByYAy94deAgJ24c/6OZN3G6PvMDDTlBcvHlgGBeSgyUx3Ll1uiakR73w8rr3wDai/mv3aeK7+d6/x6ec0P28e7osaqsfqaH6+/tXhyCfz5AE/v90ocAfQw/MBeCBZ8Eg34AEcYfgg1nZwBqDAolgH4QYyjSEeBSKkOGHSQ3xGIMegmjiUenNV+KJLM6kwnywtSijTC9qp8KMOMZUI3A35ujjRdnZ1uOPP45Imn9EJmlkZCsmSeSShl1woZMz7qfXBFNSKeOGhj3QnpZJ2rCgW8yBmSQLew1pJpUphvXBmmsWBtYDWcKJ4xBjQlWmnU7aMB2fcAa5XZ2A5sjhU18WqiUMUZWnKJxt9nTBo3YOMSFPe1JKJZo+vampnVae1MOnleZJkqOkBroTnamWmlKM/q2qetIEsfJp6UmZ1krljp3pCuilDanpq5m8NsTqsHYCq5CwyGpJBJQKPZBEs2ZiZipCzFLrow3QNlSEtknCICdJIYD7owrKioSDuTMSkRlPULDLYg/dmnSCvCaKC9So+GKI7lMPxNvvge5em1IKAwNI71c6JHyfvmAJ7PB3/4aF5MTWFQxXrhintvBe33bMG8R7PSDybhUbhurJlmkcmQwsW/YxZ0HEvBgMoUImsc1pqXAoaRnwnJa76W52r9BY0WvwZjAjjRTO/NXsNE0+M2jE1DERTWEBWGOk9NYFcNA11GALdLHQVZc9ULYda602QRwn/PXbBSU6Mdl0G+SD/shp530Qoc267TdCgPs69+AJFR6rY4g3hIS8KozbuELmEoFC0ZMbpG0PJCydeUHNMv45ScPGK/roItV6yCExce456lynurOGl8Ou0LSazn5U5Lb/TanuV53eewGK57i6YK4PX7yMwA9WO+x7r9k8Y7yPbjeR03+Gd+Nxt3i8dYf7zXaLULBu3hAmYM7g2TOaj1/faouNo/sHbg+2jIdkj1/4DB5xYvktQp/6gPMDENFvRvBTT9MgdEAf2U86RztQ/tbEP9sEDUAAtFX6tPOfBgIqgaSR2nk8+KgHvsw8EzScCF4XlpU1J4PNEuBmTOYcEjYrZYYJGW9sCC6S7aV7/ovRH7tmBhf2WeZ7MUMfC32CO8sIsWM4ZJgTuwYTH0oFYUGk4kyICBUa1gWJWpyJEqXCL7Q8MYwXiWJPIoiVM6KxipLjSROR4sY3yoSLKVnXUcBox7qMcSflokkd+3gVNZJEhxgZJCGzYsWRqEmRi0QLHo2VBD5GUjZ/FMn4LimbeiHkAUTgpHUGWJBNivIzxWoIrU5JHFIaxECsjI2ATLLKWKKGCEs0CKxsaRlBmQSUvGxZLg9ixGDWxZcoKaMx64LLnnhqmXXJmUmACM2ZcGoq1UQLEVwpEhdmE0VRud43Y8Ko7YRynEb5GVCKiU4+IFNP7YyJn+Z0zng2003x/rxIHL2yy29GKizUPOU14eKlb4rJMBOopzGJoE64XEChvJTmW5pkS0/qhZ2XtGiaKsojVr6TNKbUYipb4803jtQ2FEXjSYGTUir+czwtddqzwPYBiCKNoWpz0NQkRLcCOU1Bg8PoxGaJOA3Y1GFEkKjaCtqx+MCupOwiwkszd4GA1oqnwzPbUZH10d5NAJaha2hWC1BTZB1nrNEywVYfJVW0GkutqaKNW0VymkcZcq4LqSuciHBXvKpSBWvNkbX8ypPEOEl4hO2JX5TJIr7uM7GdAmuG+KpUyPpkLCpgLH4oa9koVeU+W6lsZ8MiFKI4hwhMeexoObOSloizLjbBFgk3V1uah0RkIhSxqUYowpEPfCSrAQEAIfkECQQABQAsAAAAAMIAwgCHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgQIAgUKAwYMAwcOBAgQBQoSBgwWBw4aBw8cBxAdCBAeCBIgCRMjChYnCxgrDBovDRwzDh83ECI8ECM/EiZDEylKFSxPFi9UGDNbGTVfGjhkHDtpHj9wH0N2IEV6Ikd/I0qEJU6KJlKRKFSWKlidK1ykLF6nLmGtMGSyMWa2Mmm7M2y/NW/FN3LMOHXROnnXOnraO3zcPH3fPH7gPH7gPH/hPYDjPoLnP4TqQIXtQIXtQIbuQIbvQIbvQIbvQIbvQIbvQIbvQIbvQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfwQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQYfvQofvQ4ftRojrS4nnVIzgY5DUeJfFjp61n6Sqp6enqKioqampqqqqq6urrKysra2trq6ur6+vsLCwsbGxsrKys7OztLS0tbW1tra2t7e3uLi4ubm5urq6u7u7vLy8vb29vr6+v7+/wMDAwcHBwsLCw8PDxMTExcXFxsbGx8fHyMjIycnJysrKy8vLzMzMzc3Nzs7Oz8/P0NDQ0dHR0tLS09PT1NTU1dXV1tbW19fX2NjY2dnZ2tra29vb3Nzc3d3d3t7e39/f4ODg4eHh4uLi4+Pj5OTk5eXl5ubm5+fn6Ojo6enp6urq6+vr7Ozs7e3t7u7u7+/v8PDw8fHx8vLy8/Pz9PT09fX19vb29/f3+Pj4+fn5+vr6+/v7/Pz8/f39/v7+////CP4ACwgcSLCgwYMIEypcyPBgBxAoVsyY+OOOxYsWb0ycgaJjhwoNQ4ocSbKkyZMoE2oYgWIixpcwY8Kc4QLFx5Q4c+rcybNgBxQwKsocSrTojBUgeipdynQnCIlFo0qNOsOEhqZYs2odCMKF0Klgw8b84WLEg61o05rs+lWs27cYYSRVS7cuwQ5e4erdezHHCpB2A2cdkYOv4cM3zAperPMBisKHIxv+gQIw48siK+SVzPmwC8uYQxvU4KKzacmfRasu8KD06deRU69mjKIt7Nt7V5ydXRcEZNzA+eaYy3trhRnBkx+GAbr40hXKo0824XyphhvSs/O9cbW6ThO2tf6LF7vCe8oHMMar1ztjt/mRHcKvny/1R4f3IqHT3++WOn6FD2DH34BhweDefwRVICCBDEqVQ3cICqSBfA1WCNMPI0RYwAgUWughRhn+N8KHJBYVonmulahiTCc6l+KKMGJUnosx1viSC8W9aKONOK424o5AWtRjaD8GGWSLixVpZJDECabkkkD+AKFdE0IJ5Q/NpfXAb1YaecOBaaXXpZU31GXCmGOyoFYHaKJ531YPdNimjT+AydSCc1oJg1Ys5Nmmf0xp4GebUjaF56BkMnUmom2q2VMFcjIKZJYpiSkpmjPwBMKleb6J05aczpmDTn2GOiegJ1Vgap51pqTjqv5dOmqSqrDmSWlDONTaJhBIisSBrmMCkYKdIuUK7JLCEitSBscamWxOhza74rM5PVCEtDFSq1ML2E47rFJDdFsiC8qmJIK4H8q2VLTo7qcuU0a0S+C7TKkgL3/0NsXlveLl29QD/KrnL1alBiwdDZ6qZazBySEsmBIMB+ewYItGDNvEi9Fg8WsYMxbpxm51fBnIkt2QMGYokGxYDr1iVoPKerHsHA8wuyVzdTWHdXN1H+TsYMu82evzUDu/p/HQMAGBKn46II2Rtgh+bDHUETpNdYSC+ny1hhWrvLWGBbwA89dgF3A0yC6UW3YBL2888NoDSS3t23DHzTDdddvNL/7eeQ90rbx89z2QvDHcKjhC6Ip8OEPdKr444806/jjkukI8w8mTN1T5S5dnLhKsEMvUuecLmRp6UcyRntDfjJ4+VeCHyx2k62LBnrfsNtIOl+1r4w6j7nzxrmHbYwIfm+F1nw2l8Z0J/57YUDbSiHKUqc31ktJrV73gzAKZvXrb573j9/SF33uM5A9ovoY7rJh+g+v/p7yF73tImYZCe8i8h0Wb17OF+ytR/6ozPQYFEEYD5A3NBnRAGyVQNcSbTwOD9ECU0WeCUKogY9aDwTHlAHOX8Z1kOjin0YVmfsEh4aBMyJiuAUeFkmKhYOL1QoPJsC4Lew0Ma3XDtBTMNP47PFYPtfKAAnImiNhyHk72xRckokuJJ8lfE50GEyiWhIZ6ceLdkLcTdk1Fi27jIk7O5RYwqsyKDBFCWMyYs7QxhVtSqR8VxRK/arFOJnKc41vqmBIv3iGPetQLH02SASNeBJCB5MsgSZJDRCbyMIsMya/+aMhH3iaSDMFBJS0JnB8sbSS04qR0xJiQV4nyNrKa1SmTAwTrMeSHq3zNJ0sCqli+ZlQ62ZQtTwPCk8Rgl52hwaOAAEzJkHIkLiwmXFLJEz8qUyplCtQz4QKEKSkFltOUyix74sxsviQGcCKmN4vSSrSwaZxE6aWi0CkTZm7ll+zESDTpUst4fikwGv4QJzqBcEymPGma1bzMP5XZpCR5E2iBGWgshyQabK6SoaoxJSchuhqJJjIFKFolQn0kyo3OZgT61KNHeZNPPfKqbAqiInfgFiCkxcCV73HoxrZZtg6EdGrqXNsD4GkxGsC0bCa46b3cObnrBGylqiOITI+ltKQepAIoBFbhnJqQDjBxVcOhKkOCqityabUhD1iqn9BIOtJciqxOrQALhGolsn1VJA9IwVWB5Na3lmQE3SwRDRRj16Xgha0fygEL+tlXlHQFsPMqaGG3clgGAaEsP10sU0DAgqgezCqSXU0HUhADxJqGBixQbGZns5IU0MCycKGBC1Jwk9Gu7SEpqBDsaQF7g9PSIAUpMEFrkxoQACH5BAkEAAUALAAAAADCAMIAhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIECAIFCgIFCgMGCwMGDAMHDQQJEAULFQYOGQcPHAgRHgkUJAsXKgwaLw4eNhAhPBAjPxElQhInRRMpSRQrTRUuUhcwVhgzWhk1Xxo4Yxw7aR09bR5BcyBEeiJIgSRMhyVPjSZRkSdTlSpYnSxdpi5grC9jsTBkszBltTJouTNrvjVvxjZwyDZxyTdyyzdzzTh00Dh20jl41jp52Dp62Tp62jt72zt83Tt83jt93jx93zx+4Dx+4Dx+4T1/4z2A5D2B5T+E60CF7UCF7kCG7kCG70CG70CG70CG70CG70CG70GH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGH8EGG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70GG70CG70CG70CG70CG70CG70CG70CG70GG70GH7kKH7UWI60yK5liN3G2TzYicup+kqqenp6ioqKmpqaqqqqurq6ysrK2tra6urq+vr7CwsLGxsbKysrOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7y8vL29vb6+vr+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJycrKysvLy8zMzM3Nzc7Ozs/Pz9DQ0NHR0dLS0tPT09TU1NXV1dbW1tfX19jY2NnZ2dra2tvb29zc3N3d3d7e3t/f3+Dg4OHh4eLi4uPj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19fb29vf39/j4+Pn5+fr6+vv7+/z8/P39/f7+/v///wj+AAsIHEiwoMGDCBMqXMjQoAYNJVCgmEFxhpeLGC8iofhC4sMIDUOKHEmypMmTKBNW0IDihY2MMGPKjGljhooPFVLq3Mmzp0+CET6omIFkptGjSJF01PCzqdOnPTGUsIi0qlWkNlQwhcq1q9cCQVvwuEq2rFEkLT58Xcv2pIgXZuPKlYlWbdu7eAlWUFF0rt+/GFtgyEvYqwiqgBMDniGisOOee/sqngyYBwqQjzOPrNCCsmfKLXJqHo2Q8+fToEWTJh0BhWTUsAFfXp259evYuP0iKUG78IfbuYPP5WG399oKiIUr/ztjsPGuJYAvnx4XxfOnGJJT3y7XhurrO1H+cB//dzd4nRVekl8/dwbm8yQ1SGdPvyqS4vAblqjPX26L/AxFAFd/BJb1wnsAFoSBegU2aJV3CRb0m4MUWoWEcxGKUOGG9jWWoIYchngUb/mBKOKJMv13ngootpgieJ25KGNGKvYW44w4emEdbTfmiKOHo4nn45BAPmbikD4WSRgG8yHpIn54VdCkky1eSFgEDFI5pA0IsjWglk7WyFaPYCJJ4loflFnmVl5FMKWaMiLxHVTawYmkDV7tZ2eZOz4l5Z5qYthUloBSOcNTQhZa5plRKQqnnD/V6aiTh/Z05KRgQnlSBEBgCucLPEnqqY88KHlSBZeMquVsPNGgqpP+L8yZUgavbslmT2PVOmMSpu5Eq64yqtBlTzoA2+IMsvZ0gbEn8nCrU64yu2ESfXL1hLQVtjCsU2Riy19zbL3pLXXEtQXCuPxRuy1XN6BLX2h5ubveDM+yxaK82/HqWK74Lsfqlan2K1ysmd0rMG7OjlbswbAlwWhmATP8mbCrjSDxZ8j2Fu3FiZVr3BIcA0btdRGE/Je24KVgslzgnrfxylaVCqAQMFulboIR1zwTvAn+qrNMNtQL3wk/x6RvhAO9XPS/SBdAc9FeZNw0QSD/nPDUBf3sMNYGeaAzxVwXpKfJLYdd0Aome2y2QaLKO/LaCLWNLspwI/S0wPTWrdD+EQLLrPfe+N78t0JMyEvw4Au5GzTiDY17NOMMeQs25JEzKzXljQPbSNTJYn6Q5Ot6PlCtOWOERK+iC6Tq5kctnnpBhU/KulWHv14A3452YhYSTHuOO6Cll+W36HfDOTtzQg+utJbHK0Y35HLnqPtpvFOONpjTx6b232OHXHbdXtc8OdxIZr+deXVXPWPz411tdvEoss/e5VgvH6L5BPYeIdEoBl/g6VjzGYfkRyHXIY2A/UHghniWIPgVCH9V0t917Fcf/8loeOfhH9SO8r3nlGyDVXnec5TAHwiWqXrXiZ5wTGin7VVsPQrcE/1I0wQQmmV8mlnYdFg4KvSNRmX+y4mhqtz3mA8GR4i6qt2+gsNDb0mwLQZDjQXlBUDHwAaJ7sobYdrlGSz2i4Ft6YBnmsgx3oUOKr/7CxlX5kKvdMuGielgV64Fx8+IkCsURMoabYjCriyrLF6EIxGfokOkBLKOF5nhTwSIyNPg0CeFjMkeG3kW1OmEkRg5JCVnYkCfKE2TmzyKEndSgdlNMpRleaJJLDJFVFbGkiSJQBBciRtQ8eRStPSMplCiwlzGpVKN8iVlktA5lCRKmIB5WE8IhcxfQqUCSWimX4q5k+5JkyzVekovr4kRPLUpmtysCjHRFM6qJO8pbyznRZTplS+pMzB5wdI7u3lGrkBznkn3EBReMADOcu7yLrhsJizbckyBriadrhxoXhC6SXZqhqGIFFNvCrpJiRonoHW06HMwCkKHbrSRj0vQB/q5wXxibUEghBDXIgBRiR0IbtY0mUa5pgGSXiwJ/wxberxXz7BR1G0e1Vt2BKbS1JXAptjKZuqQMy452m6kzGqj7QbSGqROamtTXUhVR6XKrBaEpZMCo1cbYho7JUGsYxXJXqyaI8v0NK0MOQySGAPXn6xVRmfVZ1198hYRnTWne/VJWPjVn78GNi9S2SZusqLXw+IlKENh62l4sBTHPmclLWHmX2pyE2pa1jgPEYFEKjIDq/KAIx455+ACAgA7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+
+function simple2stacked(data) {
+    return d3.nest().key(function (d) { return d.x; }).rollup(function (array) {
+        var r = {};
+        for (var i = 0; i < array.length; i++) {
+            var object = array[i];
+            if (object) {
+                r[object.key] = object.y;
+            }
+        }
+        return r;
+    }).entries(data);
+}
+function simple2nested(data, key) {
+    if (key === void 0) { key = 'key'; }
+    return d3.nest().key(function (d) { return d[key]; }).entries(data);
+}
+
+function simple2Linked(data) {
+    var linkedData = { links: [], nodes: [] };
+    data.map(function (d) { return d.class === 'link' ? linkedData.links.push(d) : linkedData.nodes.push(d); });
+    return linkedData;
+}
+function convertPropretiesToTimeFormat(data, properties, format$$1) {
+    data.forEach(function (d) {
+        properties.map(function (p) {
+            d[p] = d3.timeParse(format$$1)(d[p]);
+        });
+    });
+}
+function convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType) {
+    data.forEach(function (d) {
+        switch (xAxisType) {
+            case 'time':
+                d.x = d3.timeParse(xAxisFormat)(d.x);
+                break;
+            case 'linear':
+                d.x = +d.x;
+                break;
+        }
+        switch (yAxisType) {
+            case 'time':
+                d.y = d3.timeParse(yAxisFormat)(d.y);
+                break;
+            case 'linear':
+                d.y = +d.y;
+                break;
+        }
+    });
+    return data;
+}
+
+var YAxis = (function (_super) {
+    __extends(YAxis, _super);
+    function YAxis(orient) {
+        var _this = _super.call(this) || this;
+        _this._orient = 'left';
+        _this.selection = null;
+        if (orient != null) {
+            _this._orient = orient;
+        }
+        return _this;
+    }
+    Object.defineProperty(YAxis.prototype, "orient", {
+        get: function () {
+            return this._orient;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    YAxis.prototype.render = function () {
+        var width = this.config.get('width'), height = this.config.get('height'), yAxisFormat = this.config.get('yAxisFormat'), yAxisType = this.config.get('yAxisType'), yAxisLabel = this.config.get('yAxisLabel'), yAxisGrid = this.config.get('yAxisGrid');
+        this.initializeYAxis(width, height, yAxisFormat, yAxisType, yAxisGrid);
+        var yAxisG = this.svg
+            .append('g')
+            .attr('class', 'y axis')
+            .attr("transform", this.orient === 'left'
+            ? "translate( 0, 0 )"
+            : "translate( " + width + ", 0 )")
+            .call(this._yAxis);
+        this.svg
+            .append('text')
+            .attr('class', 'yaxis-title')
+            .attr("transform", "rotate(-90)")
+            .attr("text-anchor", "middle")
+            .attr('x', 0 - height / 2)
+            .attr('y', 0 - 55)
+            .text(yAxisLabel)
+            .style('font', '0.8em Montserrat, sans-serif');
+        this.selection = yAxisG;
+    };
+    YAxis.prototype.update = function (data) {
+        var propertyKey = this.config.get('propertyKey');
+        var propertyY = this.config.get('propertyY');
+        var yAxisType = this.config.get('yAxisType'), yAxisShow = this.config.get('yAxisShow'), layoutStacked = this.config.get('stacked');
+        this.selection.attr('opacity', yAxisShow ? 1 : 0);
+        if (yAxisType === 'linear') {
+            if (layoutStacked) {
+                var keys = d3.map(data, function (d) { return d[propertyKey]; }).keys();
+                var stack_1 = this.config.get('stack');
+                var stackedData = stack_1.keys(keys)(simple2stacked(data));
+                var min$$1 = d3.min(stackedData, function (serie) { return d3.min(serie, function (d) { return d[0]; }); });
+                var max$$1 = d3.max(stackedData, function (serie) { return d3.max(serie, function (d) { return d[1]; }); });
+                this.updateDomainByMinMax(min$$1, max$$1);
+            }
+            else {
+                var min$$1 = d3.min(data, function (d) { return d[propertyY]; }), max$$1 = d3.max(data, function (d) { return d[propertyY]; });
+                this.updateDomainByMinMax(min$$1, max$$1);
+            }
+        }
+        else if (yAxisType === 'categorical') {
+            var keys = d3.map(data, function (d) { return d[propertyKey]; }).keys().sort();
+            this._yAxis.scale().domain(keys);
+        }
+        else {
+            console.warn('could not recognize y axis type', yAxisType);
+        }
+        if (data !== null && data.length) {
+            this.transition();
+        }
+    };
+    YAxis.prototype.updateDomainByMinMax = function (min$$1, max$$1) {
+        this._yAxis.scale().domain([min$$1, max$$1]);
+    };
+    YAxis.prototype.transition = function (time) {
+        if (time === void 0) { time = 200; }
+        this.selection.transition().duration(Globals.COMPONENT_TRANSITION_TIME).call(this._yAxis);
+        this.svg.selectAll('.y.axis path').raise();
+    };
+    YAxis.prototype.initializeYAxis = function (width, height, yAxisFormat, yAxisType, yAxisGrid) {
+        switch (yAxisType) {
+            case 'linear':
+                this._yAxis = (this.orient === 'left')
+                    ? d3.axisLeft(d3.scaleLinear().range([height, 0])).tickFormat(d3.format(yAxisFormat))
+                    : d3.axisRight(d3.scaleLinear().range([height, 0])).tickFormat(d3.format(yAxisFormat));
+                break;
+            case 'categorical':
+                this._yAxis = (this.orient === 'left')
+                    ? d3.axisLeft(d3.scaleBand().rangeRound([height, 0]).padding(0.1).align(0.5))
+                    : d3.axisRight(d3.scaleBand().rangeRound([height, 0]).padding(0.1).align(0.5));
+                break;
+            default:
+                throw new Error('Not allowed type for YAxis. Only allowed "time",  "linear" or "categorical". Got: ' + yAxisType);
+        }
+        if (yAxisGrid && this.orient === 'left') {
+            this._yAxis
+                .tickSizeInner(-width)
+                .tickSizeOuter(0)
+                .tickPadding(20);
+        }
+    };
+    Object.defineProperty(YAxis.prototype, "yAxis", {
+        get: function () {
+            return this._yAxis;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return YAxis;
+}(Component));
+
+var XYAxis = (function (_super) {
+    __extends(XYAxis, _super);
+    function XYAxis() {
+        var _this = _super.call(this) || this;
+        _this._x = new XAxis();
+        _this._y = new YAxis();
+        return _this;
+    }
+    XYAxis.prototype.render = function () {
+        this._y.render();
+        this._x.render();
+    };
+    XYAxis.prototype.update = function (data) {
+        this._y.update(data);
+        this._x.update(data);
+    };
+    XYAxis.prototype.configure = function (config, svg) {
+        _super.prototype.configure.call(this, config, svg);
+        this._y.configure(config, svg);
+        this._x.configure(config, svg);
+    };
+    Object.defineProperty(XYAxis.prototype, "x", {
+        get: function () {
+            return this._x;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(XYAxis.prototype, "y", {
+        get: function () {
+            return this._y;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return XYAxis;
+}(Component));
+
+var Lineset = (function (_super) {
+    __extends(Lineset, _super);
+    function Lineset(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
+    }
+    Lineset.prototype.render = function () {
+        var _this = this;
+        var propertyX = this.config.get('propertyX');
+        var propertyY = this.config.get('propertyY');
+        var curve = this.config.get('curve');
+        this.lineGenerator = d3.line()
+            .curve(curve)
+            .x(function (d) { return _this.x.xAxis.scale()(d[propertyX]); })
+            .y(function (d) { return _this.y.yAxis.scale()(d[propertyY]); });
+    };
+    Lineset.prototype.update = function (data) {
+        var _this = this;
+        var propertyKey = this.config.get('propertyKey');
+        var dataSeries = d3.nest().key(function (d) { return d[propertyKey]; }).entries(data);
+        var series = this.svg.selectAll('g.lineSeries');
+        var colorScale = this.config.get('colorScale');
+        var lines = series.data(dataSeries, function (d) { return d[propertyKey]; })
+            .enter()
+            .append('g')
+            .attr('class', 'lineSeries')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; })
+            .attr('stroke', function (d) { return colorScale(d[propertyKey]); })
+            .append('svg:path')
+            .style('stroke', function (d) { return colorScale(d[propertyKey]); })
+            .style('stroke-width', 1.9)
+            .style('fill', 'none')
+            .attr('d', function (d) { return _this.lineGenerator(d.values); })
+            .attr('class', 'line');
+        this.svg.selectAll('.line')
+            .data(dataSeries, function (d) { return d[propertyKey]; })
+            .attr('d', function (d) { return _this.lineGenerator(d.values); })
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME)
+            .ease(d3.easeLinear);
+    };
+    return Lineset;
+}(Component));
+
+var Pointset = (function (_super) {
+    __extends(Pointset, _super);
+    function Pointset(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
+    }
+    Pointset.prototype.render = function () {
+    };
+    Pointset.prototype.update = function (data) {
+        var _this = this;
+        var propertyKey = this.config.get('propertyKey');
+        var propertyX = this.config.get('propertyX');
+        var propertyY = this.config.get('propertyY');
+        var dataSeries = d3.nest()
+            .key(function (d) { return d[propertyKey]; })
+            .entries(data), markers = null, markerShape = this.config.get('markerShape'), markerSize = this.config.get('markerSize'), markerOutlineWidth = this.config.get('markerOutlineWidth'), colorScale = this.config.get('colorScale'), points = null, series = null;
+        var shape = d3.symbol().size(markerSize);
+        series = this.svg.selectAll('g.points');
+        switch (markerShape) {
+            case 'dot':
+                shape.type(d3.symbolCircle);
+                break;
+            case 'ring':
+                shape.type(d3.symbolCircle);
+                break;
+            case 'cross':
+                shape.type(d3.symbolCross);
+                break;
+            case 'diamond':
+                shape.type(d3.symbolDiamond);
+                break;
+            case 'square':
+                shape.type(d3.symbolSquare);
+                break;
+            case 'star':
+                shape.type(d3.symbolStar);
+                break;
+            case 'triangle':
+                shape.type(d3.symbolTriangle);
+                break;
+            case 'wye':
+                shape.type(d3.symbolWye);
+                break;
+            case 'circle':
+                shape.type(d3.symbolCircle);
+                break;
+            default:
+                shape.type(d3.symbolCircle);
+        }
+        points = series
+            .data(dataSeries, function (d) { return d.values; }, function (d) { return d[propertyX]; });
+        points.enter()
+            .append('g')
+            .attr('class', 'points')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; })
+            .style('stroke', function (d) { return colorScale(d[propertyKey]); })
+            .selectAll('circle')
+            .data(function (d) { return d.values; })
+            .enter()
+            .append('path')
+            .attr('class', 'marker')
+            .attr('d', shape)
+            .style('stroke', function (d) { return colorScale(d[propertyKey]); })
+            .style('fill', function (d) { return markerShape !== 'ring' ? colorScale(d[propertyKey]) : 'transparent'; })
+            .attr('transform', function (d) { return "translate(" + _this.x.xAxis.scale()(d[propertyX]) + ", " + _this.y.yAxis.scale()(d[propertyY]) + ")"; });
+        this.svg.selectAll('.marker')
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME)
+            .ease(d3.easeLinear)
+            .attr('transform', function (d) { return "translate(" + _this.x.xAxis.scale()(d[propertyX]) + ", " + _this.y.yAxis.scale()(d[propertyY]) + ")"; });
+        points
+            .exit()
+            .remove();
+        markers = this.svg.selectAll('.marker');
+        markers
+            .on('mousedown.user', this.config.get('onDown'))
+            .on('mouseup.user', this.config.get('onUp'))
+            .on('mouseleave.user', this.config.get('onLeave'))
+            .on('mouseover.user', this.config.get('onHover'))
+            .on('click.user', this.config.get('onClick'));
+    };
+    return Pointset;
+}(Component));
+
+var Areaset = (function (_super) {
+    __extends(Areaset, _super);
+    function Areaset(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
+    }
+    Areaset.prototype.render = function () {
+        var _this = this;
+        var height = this.config.get('height'), propertyX = this.config.get('propertyX'), propertyY = this.config.get('propertyY'), curve = this.config.get('curve');
+        this.areaGenerator = d3.area()
+            .curve(curve)
+            .x(function (d) { return _this.x.xAxis.scale()(d[propertyX]); })
+            .y0(height)
+            .y1(function (d) { return _this.y.yAxis.scale()(d[propertyY]); });
+    };
+    Areaset.prototype.update = function (data) {
+        var _this = this;
+        var propertyKey = this.config.get('propertyKey');
+        var dataSeries = d3.nest().key(function (d) { return d[propertyKey]; }).entries(data);
+        var areas = this.svg.selectAll('g.area');
+        var colorScale = this.config.get('colorScale');
+        var height = this.config.get('height');
+        var areaOpacity = this.config.get('areaOpacity');
+        areas = areas.data(dataSeries, function (d) { return d[propertyKey]; })
+            .enter()
+            .append('g')
+            .attr('class', 'area')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; })
+            .append('svg:path')
+            .style('fill', function (d) { return colorScale(d[propertyKey]); })
+            .style('fill-opacity', areaOpacity)
+            .attr('d', function (d) { return _this.areaGenerator(d.values); })
+            .attr('class', 'areaPath');
+        this.svg.selectAll('.areaPath')
+            .data(dataSeries, function (d) { return d[propertyKey]; })
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME)
+            .attr('d', function (d) { return _this.areaGenerator(d.values); });
+    };
+    return Areaset;
+}(Component));
+
+var Legend = (function (_super) {
+    __extends(Legend, _super);
+    function Legend() {
+        return _super.call(this) || this;
+    }
+    Legend.prototype.render = function () {
+    };
+    Legend.prototype.update = function (data) {
+        var _this = this;
+        var dataSeries = d3.nest()
+            .key(function (d) { return d.key; })
+            .entries(data), legend = null, entries = null, colorScale = this.config.get('colorScale'), height = this.config.get('height'), width = this.config.get('width');
+        if (dataSeries.length === 1 && dataSeries[0].key === 'undefined') {
+            console.warn('Not showing legend, since there is a valid key');
+            return;
+        }
+        this.svg.selectAll('g.legend').remove();
+        legend = this.svg.append('g').attr('class', 'legend');
+        entries = legend.selectAll('.legend-entry')
+            .data(dataSeries, function (d) { return d.key; })
+            .enter()
+            .append('g')
+            .attr('class', 'legend-entry')
+            .attr(Globals.LEGEND_DATA_KEY_ATTRIBUTE, function (d) { return d.key; });
+        entries.append('rect')
+            .attr('x', width + 10)
+            .attr('y', function (d, i) { return i * 25; })
+            .attr('height', 20)
+            .attr('width', 20)
+            .style('fill', function (d) { return colorScale(d.key); })
+            .style('stroke', function (d) { return colorScale(d.key); })
+            .style('opacity', 0.8)
+            .on('click.default', function (d) { return _this.toggle(d); });
+        entries.append('text')
+            .attr("x", width + 25 + 10)
+            .attr("y", function (d, i) { return i * 25 + 7; })
+            .attr("dy", "0.55em")
+            .text(function (d) { return d.key; })
+            .style('font', '14px Montserrat, sans-serif')
+            .on('click.default', function () { return _this.toggle; });
+    };
+    Legend.prototype.toggle = function (d) {
+        var key = d.key, element = this.svg.selectAll('*[' + Globals.COMPONENT_DATA_KEY_ATTRIBUTE + '="' + key + '"]'), colorScale = this.config.get('colorScale');
+        if (!element.empty()) {
+            var opacity = element.style('opacity');
+            opacity = (opacity == 1) ? Globals.COMPONENT_HIDE_OPACITY : 1;
+            var legendEntry = this.svg.select('.legend-entry[' + Globals.LEGEND_DATA_KEY_ATTRIBUTE + '="' + key + '"]');
+            legendEntry.selectAll('rect')
+                .transition()
+                .duration(Globals.COMPONENT_HIDE_SHOW_TRANSITION_TIME)
+                .style('fill', (opacity === 1) ? function (d) { return colorScale(d.key); } : 'transparent');
+            element
+                .transition()
+                .duration(Globals.COMPONENT_HIDE_SHOW_TRANSITION_TIME)
+                .style('opacity', opacity);
+        }
+    };
+    return Legend;
+}(Component));
+
+var Container = (function () {
+    function Container(config) {
+        this.components = [];
+        this.config = config;
+        var selector = this.config.get('selector'), width = this.config.get('width'), height = this.config.get('height'), marginLeft = this.config.get('marginLeft'), marginRight = this.config.get('marginRight'), marginTop = this.config.get('marginTop'), marginBottom = this.config.get('marginBottom');
+        width += marginLeft + marginRight;
+        height += marginTop + marginBottom;
+        this.initializeContainer(selector, width, height, marginLeft, marginTop);
+    }
+    Container.prototype.add = function (component) {
+        this.components.push(component);
+        component.configure(this.config, this.svg);
+        component.render();
+        return this;
+    };
+    Container.prototype.initializeContainer = function (selector, width, height, marginLeft, marginTop) {
+        this.svg = d3.select(selector)
+            .style('position', 'relative')
+            .style('width', width + "px")
+            .style('height', height + "px")
+            .append('svg:svg')
+            .attr('preserveAspectRatio', "xMinYMin meet")
+            .attr("viewBox", "0 0 " + width + " " + height)
+            .attr('width', '100%')
+            .attr('class', 'proteic')
+            .attr('width', width)
+            .attr('height', height)
+            .style('position', 'absolute')
+            .append('g')
+            .attr('class', 'chartContainer')
+            .attr('transform', 'translate(' + marginLeft + ',' + marginTop + ')');
+    };
+    Container.prototype.updateComponents = function (data) {
+        for (var i = 0; i < this.components.length; i++) {
+            var component = this.components[i];
+            component.update(data);
+        }
+    };
+    Container.prototype.translate = function (x, y) {
+        this.svg.attr('transform', "translate(" + x + ", " + y + ")");
+    };
+    Container.prototype.viewBox = function (w, h) {
+        this.svg.attr("viewBox", "0 0 " + w + " " + h);
+    };
+    Container.prototype.zoom = function (z) {
+        this.svg.call(d3.zoom().scaleExtent([1 / 2, 4]).on("zoom", z));
+    };
+    Container.prototype.addLoadingIcon = function () {
+        var icon = Globals.LOADING_ICON;
+        this.svg.append('image').attr('id', 'loadingIcon')
+            .attr('width', '25%')
+            .attr('height', '25%')
+            .attr('x', '25%')
+            .attr('y', '25%')
+            .attr('xlink:href', icon);
+    };
+    Container.prototype.removeLoadingIcon = function () {
+        this.svg.select('image[id="loadingIcon"]').transition().duration(200).remove();
+    };
+    return Container;
+}());
+
+var SvgChart = (function () {
+    function SvgChart() {
+    }
+    SvgChart.prototype.initialize = function () {
+        this.container = new Container(this.config);
+    };
+    SvgChart.prototype.setConfig = function (config) {
+        this.config = config;
+    };
+    SvgChart.prototype.addLoading = function () {
+        this.container.addLoadingIcon();
+    };
+    SvgChart.prototype.removeLoading = function () {
+        this.container.removeLoadingIcon();
+    };
+    return SvgChart;
+}());
+
+function sortByField(array, field) {
+    array.sort(function (e1, e2) {
+        var a = e1[field];
+        var b = e2[field];
+        return (a < b) ? -1 : (a > b) ? 1 : 0;
+    });
+}
+
+var SvgStrategyLinechart = (function (_super) {
+    __extends(SvgStrategyLinechart, _super);
+    function SvgStrategyLinechart() {
+        var _this = _super.call(this) || this;
+        _this.axes = new XYAxis();
+        _this.lines = new Lineset(_this.axes.x, _this.axes.y);
+        return _this;
+    }
+    SvgStrategyLinechart.prototype.draw = function (data) {
+        var xAxisFormat = this.config.get('xAxisFormat'), xAxisType = this.config.get('xAxisType'), yAxisFormat = this.config.get('yAxisFormat'), yAxisType = this.config.get('yAxisType');
+        convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType);
+        sortByField(data, 'x');
+        this.container.updateComponents(data);
+    };
+    SvgStrategyLinechart.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var markerSize = this.config.get('markerSize'), areaOpacity = this.config.get('areaOpacity'), legend = this.config.get('legend');
+        this.container.add(this.axes).add(this.lines);
+        if (areaOpacity > 0) {
+            this.area = new Areaset(this.axes.x, this.axes.y);
+            this.container.add(this.area);
+        }
+        if (markerSize > 0) {
+            this.markers = new Pointset(this.axes.x, this.axes.y);
+            this.container.add(this.markers);
+        }
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+    };
+    return SvgStrategyLinechart;
+}(SvgChart));
 
 var paletteCategory2 = [
     '#b6dde2',
@@ -99,343 +882,6 @@ var paletteCategory8 = [
     '#4d4e98',
     '#7c4d25'
 ];
-
-var paletteSequentialYellow = [
-    '#fff1c6',
-    '#fee5a7',
-    '#fcda87',
-    '#face64',
-    '#f8bf4b',
-    '#f6b030',
-    '#f4a009',
-    '#d28514',
-    '#b36c17',
-    '#955618',
-    '#7a4317',
-    '#613214',
-    '#49230f'
-];
-
-var paletteSequentialRedOrange = [
-    '#ffecb8',
-    '#fbd68b',
-    '#f7bf5e',
-    '#f3a82f',
-    '#df7520',
-    '#cd4925',
-    '#be0a26',
-    '#a81023',
-    '#941320',
-    '#80141d',
-    '#6d1419',
-    '#5a1215',
-    '#470f0f'
-];
-
-var paletteSequentialRed = [
-    '#fde4d4',
-    '#f1c4af',
-    '#f7bf5e',
-    '#db826a',
-    '#d0614d',
-    '#c73e36',
-    '#be0a26',
-    '#a81023',
-    '#941320',
-    '#80141d',
-    '#6d1419',
-    '#5a1215',
-    '#470f0f'
-];
-
-var paletteSequentialPink = [
-    '#fbe3e3',
-    '#f9cfcc',
-    '#f0aaa9',
-    '#ed7e7e',
-    '#ea647b',
-    '#e74576',
-    '#e41270',
-    '#c70f65',
-    '#aa105c',
-    '#8d1253',
-    '#731448',
-    '#5a123c',
-    '#420e30'
-];
-
-var paletteSequentialPurplePink = [
-    '#f9d8e6',
-    '#ebbed7',
-    '#dda4c7',
-    '#c890bb',
-    '#b27daf',
-    '#8a4c94',
-    '#622181',
-    '#622181',
-    '#50216b',
-    '#472060',
-    '#3e1f55',
-    '#361e4b',
-    '#2d1c41'
-];
-
-var paletteSequentialPurple = [
-    '#f6e8f1',
-    '#dcc5de',
-    '#c2a3c9',
-    '#a980b3',
-    '#905e9f',
-    '#793f8e',
-    '#622181',
-    '#592175',
-    '#4f216b',
-    '#462060',
-    '#3d1f55',
-    '#351e4b',
-    '#2c1c41'
-];
-
-var paletteSequentialBlue = [
-    '#e5f2f9',
-    '#d1e5f5',
-    '#afd3ed',
-    '#91afd7',
-    '#738bbf',
-    '#3c5a9e',
-    '#0c3183',
-    '#132a68',
-    '#10204c',
-    '#0b193b',
-    '#06142f',
-    '#051228',
-    '#061020'
-];
-
-var paletteSequentialLightBlue = [
-    '#eff8fd',
-    '#d9eff6',
-    '#c2e5ef',
-    '#a8dae8',
-    '#90cbe4',
-    '#76b8e1',
-    '#5baddc',
-    '#4d96cc',
-    '#427ebc',
-    '#3a67ab',
-    '#324c88',
-    '#29366b',
-    '#1e2354'
-];
-
-var paletteSequentialBlueViolet = [
-    '#edf7e7',
-    '#c8e3d2',
-    '#91cdbf',
-    '#41b5ab',
-    '#218ba4',
-    '#145d94',
-    '#0c3183',
-    '#0d2d76',
-    '#0d2a6a',
-    '#0e265e',
-    '#0d2253',
-    '#0c1e47',
-    '#0b1a3c'
-];
-
-var paletteSequentialTurquoise = [
-    '#e2ecf6',
-    '#cadfe6',
-    '#b1d3d6',
-    '#94c6c6',
-    '#74b9b6',
-    '#4caca6',
-    '#00a096',
-    '#008d89',
-    '#007b7c',
-    '#006a6f',
-    '#005963',
-    '#004a57',
-    '#063b4c'
-];
-
-var paletteSequentialLightGreen = [
-    '#faf9de',
-    '#e9efc3',
-    '#d7e4a7',
-    '#c5d989',
-    '#b1ce6a',
-    '#9cc34c',
-    '#84b92a',
-    '#6fa32b',
-    '#5a8f2a',
-    '#477c29',
-    '#346b27',
-    '#205b24',
-    '#074d21'
-];
-
-var paletteSequentialDarkGreen = [
-    '#eaf3e5',
-    '#c7d5be',
-    '#a3ba9a',
-    '#80a078',
-    '#5c885a',
-    '#357442',
-    '#00632e',
-    '#00592b',
-    '#004e27',
-    '#004423',
-    '#033a1e',
-    '#053019',
-    '#052613'
-];
-
-var paletteSequentialGreenBrown = [
-    '#f7eccd',
-    '#d9cba6',
-    '#bcad82',
-    '#a29162',
-    '#887946',
-    '#716330',
-    '#5b501f',
-    '#51461d',
-    '#483d1b',
-    '#3f3418',
-    '#362b15',
-    '#2d2311',
-    '#231a0d'
-];
-
-var paletteSequentialBrown = [
-    '#f7eccd',
-    '#eed3ab',
-    '#e4bb89',
-    '#dba269',
-    '#ad7446',
-    '#834d2c',
-    '#5e2f19',
-    '#552a18',
-    '#4c2516',
-    '#432113',
-    '#3a1c11',
-    '#32180f',
-    '#29130b'
-];
-
-var paletteSequentialGrey = [
-    '#e5e8ea',
-    '#bdbfc3',
-    '#999a9f',
-    '#77797f',
-    '#595c64',
-    '#3e444c',
-    '#253038',
-    '#20282e',
-    '#1a2024',
-    '#15181b',
-    '#0e1112',
-    '#070808',
-    '#000000'
-];
-
-var paletteSequentialVioletCb = [
-    '#f4f3f9',
-    '#e0dced',
-    '#cbc6e0',
-    '#b7b0d4',
-    '#948cbf',
-    '#706baa',
-    '#4d4e98',
-    '#484889',
-    '#42427a',
-    '#3d3c6c',
-    '#37365e',
-    '#313050',
-    '#2c2a44'
-];
-
-var paletteSequentialPinkCb = [
-    '#fbe5ee',
-    '#f8ccd5',
-    '#f4b2bc',
-    '#f096a3',
-    '#d56976',
-    '#bc3f52',
-    '#a50f38',
-    '#951735',
-    '#851b31',
-    '#761d2e',
-    '#671e2a',
-    '#581d26',
-    '#4a1c22'
-];
-
-var paletteSequentialBlueCb = [
-    '#eaf6fc',
-    '#cfe4f4',
-    '#cfe4f4',
-    '#91bfe3',
-    '#6999bb',
-    '#417797',
-    '#065b78',
-    '#11536b',
-    '#174b5f',
-    '#194354',
-    '#1a3b49',
-    '#1a343f',
-    '#192d35'
-];
-
-var paletteSequentialGreenCb = [
-    '#fff7d0',
-    '#e9e09b',
-    '#d1ca62',
-    '#b7b623',
-    '#9e9e28',
-    '#88872a',
-    '#72722a',
-    '#676726',
-    '#5c5c23',
-    '#51511f',
-    '#47471b',
-    '#3d3d17',
-    '#333413'
-];
-
-var paletteSequentialGreenBrownCb = [
-    '#f2edde',
-    '#d8d1c0',
-    '#bfb699',
-    '#a09778',
-    '#837b5a',
-    '#686141',
-    '#4f4b2c',
-    '#3e3e1f',
-    '#2e3313',
-    '#292d14',
-    '#232613',
-    '#1e2012',
-    '#191a10'
-];
-
-var paletteDivergingSpectral1 = [
-    '#98141f',
-    '#ab332c',
-    '#bf5040',
-    '#d5705b',
-    '#e4a57f',
-    '#f3d6a6',
-    '#f5f2b8',
-    '#cfdbb1',
-    '#a4c4a9',
-    '#71ada1',
-    '#4e868f',
-    '#2e637d',
-    '#06456c'
-];
-
 var paletteDivergingSpectral2 = [
     '#d43d4f',
     '#df564b',
@@ -452,2159 +898,440 @@ var paletteDivergingSpectral2 = [
     '#3489be'
 ];
 
-var paletteDivergingSpectral3 = [
-    '#651035',
-    '#ae1143',
-    '#c9314b',
-    '#dd7257',
-    '#eeb27a',
-    '#feeb9e',
-    '#f5f2b8',
-    '#cadfba',
-    '#96cabb',
-    '#50b4bb',
-    '#3eaecc',
-    '#206791',
-    '#0c2c63'
-];
-
-var paletteDivergingBrownTurquoise = [
-    '#3f3128',
-    '#683828',
-    '#933624',
-    '#d5705b',
-    '#db9c5e',
-    '#feeb9e',
-    '#f5f2b8',
-    '#cfdbb1',
-    '#a4c4a9',
-    '#71ada1',
-    '#628f85',
-    '#53746d',
-    '#475b57'
-];
-
-var paletteDivergingOrangePink = [
-    '#e7511e',
-    '#eb6929',
-    '#ee7f37',
-    '#f29446',
-    '#f9c083',
-    '#ffe9c3',
-    '#ffeee3',
-    '#f9cfc1',
-    '#f3a9ab',
-    '#db6882',
-    '#c71360',
-    '#891953',
-    '#4b1c47'
-];
-
-var paletteDivergingRedBlue = [
-    '#b2172b',
-    '#c4443e',
-    '#d76a5a',
-    '#ed937e',
-    '#f4b8a2',
-    '#fcdbc7',
-    '#efefef',
-    '#bfcad5',
-    '#8ba7bc',
-    '#4d87a5',
-    '#3c7ca0',
-    '#28729b',
-    '#036896'
-];
-
-var paletteDivergingRedGrey = [
-    '#b2172b',
-    '#c54532',
-    '#da6c3b',
-    '#f29446',
-    '#f8bc67',
-    '#fee08b',
-    '#efece5',
-    '#c9c5c1',
-    '#a5a19f',
-    '#808080',
-    '#666666',
-    '#333333',
-    '#000000'
-];
-
-var paletteDivergingOrangeViolet = [
-    '#98141f',
-    '#ab332c',
-    '#f9bc47',
-    '#fdcf66',
-    '#fede8d',
-    '#ffecb3',
-    '#f9eff6',
-    '#e8d0e3',
-    '#a4c4a9',
-    '#a973aa',
-    '#834f96',
-    '#622181',
-    '#402357'
-];
-
-var paletteDivergingPurpleGreen = [
-    '#59194b',
-    '#85134b',
-    '#c71360',
-    '#db6882',
-    '#eba7a8',
-    '#fce0ca',
-    '#faefe1',
-    '#dbd9aa',
-    '#b9c26e',
-    '#94ad31',
-    '#728b2b',
-    '#546c25',
-    '#39521f'
-];
-
-var paletteDivergingVioletGreen = [
-    '#55296e',
-    '#75408e',
-    '#8a5fa0',
-    '#a081b5',
-    '#beadcf',
-    '#ddd7e7',
-    '#eae8ed',
-    '#c1d4bc',
-    '#93be86',
-    '#58a951',
-    '#3c853e',
-    '#23662f',
-    '#084a22'
-];
-
-var paletteDivergingRedGreen = [
-    '#b2172b',
-    '#c5403c',
-    '#d96453',
-    '#ef8972',
-    '#f6b49c',
-    '#fcdbc7',
-    '#f9ebde',
-    '#dad6a8',
-    '#b9c16d',
-    '#94ad31',
-    '#728b2b',
-    '#546c25',
-    '#39521f'
-];
-
-var paletteDivergingBrownGreen = [
-    '#735146',
-    '#846454',
-    '#977a65',
-    '#aa9177',
-    '#c2ad91',
-    '#dbcaad',
-    '#edebd6',
-    '#c4d6aa',
-    '#94bf7c',
-    '#58a951',
-    '#3c853e',
-    '#23662f',
-    '#084a22'
-];
-
-var paletteDivergingLightBrownTurquoise = [
-    '#8b5219',
-    '#a46821',
-    '#bf812c',
-    '#cfa151',
-    '#e2c489',
-    '#f6e8c3',
-    '#f5f1df',
-    '#cbdccc',
-    '#9cc6b9',
-    '#60afa6',
-    '#359790',
-    '#1d7d75',
-    '#00665e'
-];
-
-
-function category1() {
-    return d3$1.scaleOrdinal().range(paletteCategory1);
-}
-
 function category2() {
-    return d3$1.scaleOrdinal().range(paletteCategory2);
+    return d3.scaleOrdinal().range(paletteCategory2);
 }
-
 function category3() {
-    return d3$1.scaleOrdinal().range(paletteCategory3);
+    return d3.scaleOrdinal().range(paletteCategory3);
 }
-
 function category4() {
-    return d3$1.scaleOrdinal().range(paletteCategory4);
+    return d3.scaleOrdinal().range(paletteCategory4);
 }
-
 function category5() {
-    return d3$1.scaleOrdinal().range(paletteCategory5);
-}
-
-function category6() {
-    return d3$1.scaleOrdinal().range(paletteCategory6);
+    return d3.scaleOrdinal().range(paletteCategory5);
 }
 
 function category7() {
-    return d3$1.scaleOrdinal().range(paletteCategory7);
+    return d3.scaleOrdinal().range(paletteCategory7);
 }
-
 function category8() {
-    return d3$1.scaleOrdinal().range(paletteCategory8);
-}
-
-function sequentialYellow() {
-    return d3$1.scaleQuantile().range(paletteSequentialYellow);
-}
-
-function sequentialRedOrange() {
-    return d3$1.scaleQuantile().range(paletteSequentialRedOrange);
-}
-
-function sequentialRed() {
-    return d3$1.scaleQuantile().range(paletteSequentialRed);
-}
-
-function sequentialPink() {
-    return d3$1.scaleQuantile().range(paletteSequentialPink);
-}
-
-function sequentialPurplePink() {
-    return d3$1.scaleQuantile().range(paletteSequentialPurplePink);
-}
-
-function sequentialPurple() {
-    return d3$1.scaleQuantile().range(paletteSequentialPurple);
-}
-
-function sequentialBlue() {
-    return d3$1.scaleQuantile().range(paletteSequentialBlue);
-}
-
-function sequentialLightBlue() {
-    return d3$1.scaleQuantile().range(paletteSequentialLightBlue);
-}
-
-function sequentialBlueViolet() {
-    return d3$1.scaleQuantile().range(paletteSequentialBlueViolet);
-}
-
-function sequentialTurquoise() {
-    return d3$1.scaleQuantile().range(paletteSequentialTurquoise);
-}
-
-function sequentialLightGreen() {
-    return d3$1.scaleQuantile().range(paletteSequentialLightGreen);
-}
-
-function sequentialDarkGreen() {
-    return d3$1.scaleQuantile().range(paletteSequentialDarkGreen);
-}
-
-function sequentialGreenBrown() {
-    return d3$1.scaleQuantile().range(paletteSequentialGreenBrown);
-}
-
-function sequentialBrown() {
-    return d3$1.scaleQuantile().range(paletteSequentialBrown);
-}
-
-function sequentialGrey() {
-    return d3$1.scaleQuantile().range(paletteSequentialGrey);
-}
-
-function sequentialVioletCb() {
-    return d3$1.scaleQuantile().range(paletteSequentialVioletCb);
-}
-
-function sequentialPinkCb() {
-    return d3$1.scaleQuantile().range(paletteSequentialPinkCb);
-}
-
-function sequentialBlueCb() {
-    return d3$1.scaleQuantile().range(paletteSequentialBlueCb);
-}
-
-function sequentialGreenCb() {
-    return d3$1.scaleQuantile().range(paletteSequentialGreenCb);
-}
-
-function sequentialGreenBrownCb() {
-    return d3$1.scaleQuantile().range(paletteSequentialGreenBrownCb);
-}
-
-function diverging_spectral1() {
-    return d3$1.scaleQuantile().range(paletteDivergingSpectral1);
+    return d3.scaleOrdinal().range(paletteCategory8);
 }
 
 function diverging_spectral2() {
-    return d3$1.scaleQuantile().range(paletteDivergingSpectral2);
+    return d3.scaleQuantile().range(paletteDivergingSpectral2);
 }
 
-function diverging_spectral3() {
-    return d3$1.scaleQuantile().range(paletteDivergingSpectral3);
-}
-
-function diverging_brown_turquoise() {
-    return d3$1.scaleQuantile().range(paletteDivergingBrownTurquoise);
-}
-
-function diverging_orange_pink() {
-    return d3$1.scaleQuantile().range(paletteDivergingOrangePink);
-}
-
-function diverging_red_blue() {
-    return d3$1.scaleQuantile().range(paletteDivergingRedBlue);
-}
-
-function diverging_red_grey() {
-    return d3$1.scaleQuantile().range(paletteDivergingRedGrey);
-}
-
-function diverging_orange_violet() {
-    return d3$1.scaleQuantile().range(paletteDivergingOrangeViolet);
-}
-
-function diverging_purple_green() {
-    return d3$1.scaleQuantile().range(paletteDivergingPurpleGreen);
-}
-
-function diverging_violet_green() {
-    return d3$1.scaleQuantile().range(paletteDivergingVioletGreen);
-}
-
-function diverging_red_green() {
-    return d3$1.scaleQuantile().range(paletteDivergingRedGreen);
-}
-
-function diverging_brown_green() {
-    return d3$1.scaleQuantile().range(paletteDivergingBrownGreen);
-}
-
-function diverging_lightBrown_turquoise() {
-    return d3$1.scaleQuantile().range(paletteDivergingLightBrownTurquoise);
-}
-
-/**
- * 
- * A Datasource is the name given to the connection set up to a data endpoint. This class defines the common methods for the datasources,
- * such as start() and stop().
- * 
- * @export Default export: Datasource class
- * 
- * @class Datasource The Datasource class
- * 
- */
-var Datasource = function Datasource() {
-    this.filters = [];
-    this.properties = [];
-};
-
-/**
- * Starts the stream of data
- * 
- * 
- * @memberOf Datasource
- */
-Datasource.prototype.start = function start () {
-    window.console.log('Starting datasource');
-};
-
-/**
- * 
- * If started, this method stops the stream of data
- * 
- * @memberOf Datasource
-    
- */
-Datasource.prototype.stop = function stop () {
-    window.console.log('Stopping datasource');
-};
-
-
-Datasource.prototype.property = function property (prop, newProp, cast) {
-    this.properties.push({ 'p': prop, 'newP': newProp, cast: cast });
-    return this;
-};
-
-
-Datasource.prototype.convert = function convert (data) {
-        var this$1 = this;
-
-    var result = {};
-    for (var i in this.properties) {
-        var p = this$1.properties[i].p;
-        var value = eval('data.' + this$1.properties[i].newP);
-       // if(this.properties[i].cast){
-        //value = new this.properties[i].cast(value);
-       // }
-
-        result[p] = value;
+var Interpolation = (function () {
+    function Interpolation() 
     }
-    return result;
-};
-
-/**
- * Filters the incoming messages. Each data record that do not comply the filter condition will be discarded
- * 
- * @param {any} filter A filter condition
- * @returns this Datasource instance
- * 
- * @memberOf Datasource
- */
-Datasource.prototype.filter = function filter (filter) {
-    return this;
-};
-
-/**
- * 
- * This datasource set up a connection to a http server. 
- * @export
- * @class HTTPDatasource
- * @extends {Datasource}
-
- */
-var HTTPDatasource = (function (Datasource$$1) {
-    function HTTPDatasource(source) {
-        Datasource$$1.call(this);
-        this.source = source;
-        this.intervalId = -1;
-        this.started = false;
-    }
-
-    if ( Datasource$$1 ) HTTPDatasource.__proto__ = Datasource$$1;
-    HTTPDatasource.prototype = Object.create( Datasource$$1 && Datasource$$1.prototype );
-    HTTPDatasource.prototype.constructor = HTTPDatasource;
-
-    /**
-     * Configure a dispatcher for this datasource.
-     * 
-     * @param {any} dispatcher A d3 dispatcher. This dispatcher is in charge of receiving and sending events.
-     * 
-     * @memberOf HTTPDatasource
-     */
-    HTTPDatasource.prototype.configure = function configure (dispatcher) {
-        this.dispatcher = dispatcher;
-    };
-
-    /**
-     * 
-     * Initialize an HTTP connection
-     * 
-     * @memberOf HTTPDatasource
-    
-     */
-    HTTPDatasource.prototype.start = function start () {
-        if (!this.started) {
-            Datasource$$1.prototype.start.call(this);
-            var pollingTime = this.source.pollingTime;
-            var url = this.source.url;
-            this._startPolling(url, pollingTime);
-            this.started = true;
-        }
-    };
-
-
-    HTTPDatasource.prototype._startPolling = function _startPolling (url, time) {
-        var this$1 = this;
-        if ( time === void 0 ) time = 1000;
-
-        var interval = window.setInterval;
-        this.intervalId = interval(function () { return this$1._startRequest(url); }, time);
-    };
-
-    HTTPDatasource.prototype._startRequest = function _startRequest (url) {
-        var this$1 = this;
-
-
-        window.console.log('url', url);
-        d3$1.request(url).get(function (e, response) { return this$1._handleResponse(response); });
-    };
-
-    HTTPDatasource.prototype._stopPolling = function _stopPolling () {
-        var clearInterval = window.clearInterval;
-        clearInterval(this.intervalId);
-    };
-
-    HTTPDatasource.prototype._handleResponse = function _handleResponse (xmlHttpRequest) {
-        var parseJson = window.JSON.parse;
-        if (xmlHttpRequest.readyState === 4 && xmlHttpRequest.status === 200) {
-            var response = parseJson(xmlHttpRequest.response);
-            this._handleOK(response);
-        }
-        else {
-            this._handleError(xmlHttpRequest);
-        }
-    };
-
-    HTTPDatasource.prototype._handleOK = function _handleOK (data) {
-        if(this.properties.length > 0 ) {
-            data = this.convert(data);
-        }
-        this.dispatcher.call('onmessage', this, data);
-    };
-
-    HTTPDatasource.prototype._handleError = function _handleError (data) {
-        this.dispatcher.call('onerror', this, data);
-    };
-
-    /**
-     * If started, this method close the HTTP connection.
-     * 
-     * @memberOf HTTPDatasource
-    * */
-    HTTPDatasource.prototype.stop = function stop () {
-        if (this.started) {
-            this._stopPolling();
-            this.started = false;
-        }
-    };
-
-    return HTTPDatasource;
-}(Datasource));
-
-/**
- * 
- * This datasource set up a connection to a websocket server. 
- * @export
- * @class WebsocketDatasource
- * @extends {Datasource}
-
- */
-var WebsocketDatasource = (function (Datasource$$1) {
-    function WebsocketDatasource(source) {
-        Datasource$$1.call(this);
-        this.source = source;
-    }
-
-    if ( Datasource$$1 ) WebsocketDatasource.__proto__ = Datasource$$1;
-    WebsocketDatasource.prototype = Object.create( Datasource$$1 && Datasource$$1.prototype );
-    WebsocketDatasource.prototype.constructor = WebsocketDatasource;
-    
-    /**
-     * Configure a dispatcher for this datasource.
-     * 
-     * @param {any} dispatcher A d3 dispatcher. This dispatcher is in charge of receiving and sending events.
-     * 
-     * @memberOf WebsocketDatasource
-     */
-    WebsocketDatasource.prototype.configure = function configure (dispatcher) {
-        this.dispatcher = dispatcher;
-    };
-
-    /**
-     * 
-     * Initialize a websocket connection
-     * 
-     * @memberOf WebsocketDatasource
-    
-     */
-    WebsocketDatasource.prototype.start = function start () {
-        var this$1 = this;
-
-        Datasource$$1.prototype.start.call(this);
-        this.ws = new window.WebSocket(this.source.endpoint);
-
-        this.ws.onopen = function (e) {
-            this$1.dispatcher.call('onopen', this$1, e);
-        };
-        this.ws.onerror = function (e) {
-            throw new Error('An error occurred trying to reach the websocket server' + e);
-            //this.dispatcher.call('onerror', this, e);
-        };
-        this.ws.onmessage = function (e) {
-            var data = JSON.parse(e.data);
-            this$1.dispatcher.call('onmessage', this$1, data);
-        };
-    };
-    /**
-     * If started, this method close the websocket connection.
-     * 
-     * @memberOf WebsocketDatasource
-    * */
-    WebsocketDatasource.prototype.stop = function stop () {
-        Datasource$$1.prototype.stop.call(this);
-        if (this.ws) {
-            this.ws.close();
-        }
-    };
-
-    return WebsocketDatasource;
-}(Datasource));
+    return Interpolation;
+}());
+Interpolation.CURVE_LINEAR = d3.curveLinear;
+Interpolation.CURVE_LINEAR_CLOSED = d3.curveLinearClosed;
+Interpolation.CURVE_MONOTONE_X = d3.curveMonotoneX;
+Interpolation.CURVE_MONOTONE_Y = d3.curveMonotoneY;
+Interpolation.CURVE_NATURAL = d3.curveNatural;
+Interpolation.CURVE_STEP = d3.curveStep;
+Interpolation.CURVE_STEP_AFTER = d3.curveStepAfter;
+Interpolation.CURVE_STEP_BEFORE = d3.curveStepBefore;
 
 var defaults = {
     selector: '#chart',
     colorScale: category7(),
-    //Area
-    areaOpacity: 0.4,
-
-    //Axes
+    curve: Interpolation.CURVE_MONOTONE_X,
+    areaOpacity: 0,
     xAxisType: 'linear',
     xAxisFormat: '',
     xAxisLabel: null,
+    xAxisGrid: true,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: null,
-    //margins
+    yAxisShow: true,
+    yAxisGrid: true,
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
     marginLeft: 150,
-    //markers
-    markerShape: 'circle',
-    markerSize: 5,
+    markerShape: 'dot',
+    markerSize: 0,
     markerOutlineWidth: 2,
-    //Width & height
-    width: '100%', // %, auto, or numeric
+    width: '100%',
     height: 250,
-    //Events
-    onDown: function onDown(d) {
+    legend: true,
+    propertyX: 'x',
+    propertyY: 'y',
+    propertyKey: 'key',
+    onDown: function (d) {
     },
-    onHover: function onHover(d) {
+    onHover: function (d) {
     },
-    onLeave: function onLeave(d) {
+    onLeave: function (d) {
     },
-    onClick: function onClick(d) {
+    onClick: function (d) {
     },
-
-    maxNumberOfElements: 100, // used by keepDrawing method to reduce the number of elements in the current chart
+    onUp: function (d) {
+    },
+    maxNumberOfElements: 10,
 };
 
-var SvgContainer = function SvgContainer(config) {
-  this._config = config;
-  this.svg = this._initializeSvgContainer(config);
-  this.components = Array();
-};
-
-SvgContainer.prototype._initializeSvgContainer = function _initializeSvgContainer (config) {
-    var selector = config.selector,
-    width = config.width + config.marginLeft + config.marginRight,
-    height = config.height + config.marginTop + config.marginBottom,
-    svg = null;
-
-  svg = d3$1.select(selector)
-    .append('svg:svg')
-    .attr('width', width)
-    .attr('height', height)
-    .append('g')
-    .attr('class', 'chartContainer')
-    .attr('transform', 'translate(' + config.marginLeft + ',' + config.marginTop + ')');
-
-  return svg;
-};
-
-
-SvgContainer.prototype.add = function add (component, render) {
-    if ( render === void 0 ) render = true;
-
-  this.components.push(component);
-
-  if (render) {
-    component.render(this.svg, this._config);
-  }
-  return this;
-};
-
-SvgContainer.prototype.transform = function transform (translation) {
-  this.svg.attr('transform', translation);
-
-};
-
-function isNumeric(n) {
-  return !isNaN(parseFloat(n)) && isFinite(n);
-}
-
-function isEven(n) {
-  return n % 2 === 0;
-}
-
-function isPercentage(n) {
-  var split = null;
-  var number = null;
-  if (!n || typeof n !== 'string') {
-    return false;
-  }
-  split = n.split('%');
-  number = (+split[0]);
-  return split.length === 2 &&
-    (number >= 0) &&
-    (number <= 100);
-}
-
-
-
-
-
-
-
-
-function deg2rad(deg) {
-  return deg * Math.PI / 180;
-}
-
-function calculateWidth(widthConfig, selector) {
-  if (widthConfig === 'auto') {
-    return d3$1.select(selector)
-      .node()
-      .getBoundingClientRect()
-      .width;
-  }
-  else if (isNumeric(widthConfig)) {
-    return widthConfig;
-  }
-  else if (isPercentage(widthConfig)) {
-    var containerWidth, percentage;
-    containerWidth = d3$1.select(selector)
-      .node()
-      .getBoundingClientRect()
-      .width;
-    percentage = widthConfig.split('%')[0];
-    return Math.round(percentage * containerWidth / 100);
-  } else {
-    throw Error('Unknow config width value: ' + widthConfig);
-  }
-}
-
-var SvgAxis = function SvgAxis(context) {
-    this._loadConfig(context.config);
-    this.svgContainer = new SvgContainer(this.config);
-};
-
-SvgAxis.prototype.changeConfigProperty = function changeConfigProperty (p, v) {
-    this.config[p] = v;
-    if (p === 'width' || p === 'height') {
-        this.config.needRescaling = true;
+var Linechart = (function (_super) {
+    __extends(Linechart, _super);
+    function Linechart(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyLinechart(), data, userConfig, defaults) || this;
     }
-};
-
-SvgAxis.prototype.rescale = function rescale (width, height) {
-        if ( width === void 0 ) width = this.config.width;
-        if ( height === void 0 ) height = this.config.height;
-
-    this.axes.rescale(width, height);
-    this.config.needRescaling = false;
-};
-
-/**
- * 
- * Load the configuration context. It creates a configuration global from the parameters specified by users.
- * If any parameter is empty, this will be replaced by its default option 
- * 
- * @param {any} config User configuration
- * @param {any} defaults Defaults values for this chart
- * 
- * @memberOf SvgAxis
-    
- */
-SvgAxis.prototype._loadConfig = function _loadConfig (config, defaults) {
-    this.config = {};
-    //Selector
-    this.config.selector = config.selector || defaults.selector;
-    //Margins 
-    this.config.marginTop = config.marginTop || defaults.marginTop;
-    this.config.marginLeft = config.marginLeft || defaults.marginLeft;
-    this.config.marginRight = config.marginRight || defaults.marginRight;
-    this.config.marginBottom = config.marginBottom || defaults.marginBottom;
-    //Width & height
-    this.config.width = config.width
-        ? calculateWidth(config.width, this.config.selector) - this.config.marginLeft - this.config.marginRight
-        : calculateWidth(defaults.width, this.config.selector) - this.config.marginLeft - this.config.marginRight;
-    this.config.height = config.height || defaults.height;
-    //Axis
-    this.config.xAxisType = config.xAxisType || defaults.xAxisType;
-    this.config.xAxisFormat = config.xAxisFormat || defaults.xAxisFormat;
-    this.config.xAxisLabel = config.xAxisLabel || defaults.xAxisLabel;
-    this.config.yAxisType = config.yAxisType || defaults.yAxisType;
-    this.config.yAxisFormat = config.yAxisFormat || defaults.yAxisFormat;
-    this.config.yAxisLabel = config.yAxisLabel || defaults.yAxisLabel;
-    //Color
-    this.config.colorScale = config.colorScale || defaults.colorScale;
-    //Events
-    this.config.onDown = config.onDown || defaults.onDown;
-    this.config.onUp = config.onUp || defaults.onUp;
-    this.config.onHover = config.onHover || defaults.onHover;
-    this.config.onClick = config.onClick || defaults.onClick;
-    this.config.onLeave = config.onLeave || defaults.onLeave;
-};
-
-var XAxis = function XAxis(xAxisType, config) {
-  if (config === null) {
-    throw new Error('No chart context specified for XAxis');
-  }
-
-  this.xAxis = this._initializeXAxis(xAxisType, config);
-};
-
-
-XAxis.prototype.rescale = function rescale (width, height) {
-  this.xAxis.scale().range([0, width]);
-};
-
-XAxis.prototype._initializeXAxis = function _initializeXAxis (xAxisType, config) {
-    if ( xAxisType === void 0 ) xAxisType = 'linear';
-
-  var x = null,
-    axis = null;
-
-  // switch (xAxisType) {
-  // case 'time':
-  //   x = scaleTime().range([0, config.width]);
-  //   break;
-  // case 'linear':
-  //   x = scaleLinear().range([0, config.width]);
-  //   break;
-  // case 'categorical':
-  //   x = scaleBand().rangeRound([0, config.width])
-  //     .padding(0.1)
-  //     .align(0.5);
-  //   break;
-  // default:
-  //   throw new Error('Not allowed type for XAxis. Only allowed "time","linear" or "categorical". Got: ' + xAxisType);
-  // }
-
-  switch (xAxisType) {
-    case 'time':
-      x = d3$1.scaleTime().range([0, config.width]);
-      axis = d3$1.axisBottom(x);
-      break;
-    case 'linear':
-      x = d3$1.scaleLinear().range([0, config.width]);
-      axis = d3$1.axisBottom(x).tickFormat(d3$1.format(config.xAxisFormat));
-      break;
-    case 'categorical':
-      x = d3$1.scaleBand().rangeRound([0, config.width])
-        .padding(0.1)
-        .align(0.5);
-      axis = d3$1.axisBottom(x);
-      break;
-    default:
-      throw new Error('Not allowed type for XAxis. Only allowed "time","linear" or "categorical". Got: ' + xAxisType);
-  }
-
-  return d3$1.axisBottom(x);
-};
-
-XAxis.prototype.transition = function transition (svg, time) {
-    if ( time === void 0 ) time = 200;
-
-  svg.selectAll('.x.axis').transition().duration(time).call(this.xAxis).on('end', this.xStyle);
-};
-
-XAxis.prototype.xStyle = function xStyle () {
-  d3$1.select(this).selectAll('g.tick text')
-    .style('font', '1.4em Montserrat, sans-serif')
-    .style('fill', function (d, i) { return !isEven(i) || i === 0 ? '#5e6b70' : '#1a2127'; })
-    .style('fill', function (d) { return '#1a2127'; });
-
-
-  d3$1.select(this).selectAll(['path', 'line'])
-    .attr('stroke', 'gray')
-    .attr('stroke-width', .3);
-
-};
-
-/**
- * This function is used when both x and y dial update their domains by x and y max/min values, respectively.
- */
-XAxis.prototype.updateDomainByBBox = function updateDomainByBBox (b) {
-  var x = this.xAxis.scale();
-  x.domain([b[0], b[1]]);
-};
-
-/**
- * Used when x domain is caterogial (a set of keys) and y domain is linear.
- */
-XAxis.prototype.updateDomainByKeys = function updateDomainByKeys (keys$$1, yBbox) {
-  var x = this.xAxis.scale();
-  x.domain(keys$$1);
-};
-
-XAxis.prototype.render = function render (svg, config) {
-  var xAxis = this.xAxis,
-    width = config.width,
-    height = config.height;
-  svg
-    .append('g')
-    .attr('class', 'x axis')
-    .attr('transform', 'translate(0,' + config.height + ')')
-    .call(xAxis);
-
-  svg
-    .append('text')
-    .attr('class', 'xaxis-title')
-    .attr("text-anchor", "middle")
-    .attr('x', width / 2)
-    .attr('y', height + 40)
-    .text(config.xAxisLabel)
-    .style('font', '0.8em Montserrat, sans-serif');
-
-  this.svg = svg;
-};
-
-var YAxis = function YAxis(yAxisType, config) {
-  if (config === null) {
-    throw new Error('No chart context specified for XAxis');
-  }
-
-  this.yAxis = this._initializeYAxis(yAxisType, config);
-};
-
-YAxis.prototype.rescale = function rescale (width, height) {
-  this.yAxis.tickSizeInner(-width);
-};
-
-YAxis.prototype._initializeYAxis = function _initializeYAxis (yAxisType, config) {
-    if ( yAxisType === void 0 ) yAxisType = 'linear';
-
-  var y = null,
-    axis = null;
-  switch (yAxisType) {
-    case 'linear':
-      y = d3$1.scaleLinear().range([config.height, 0]);
-      axis = d3$1.axisLeft(y).tickFormat(d3$1.format(config.yAxisFormat));
-      break;
-    case 'categorical':
-      y = d3$1.scaleBand().rangeRound([config.height, 0])
-        .padding(0.1)
-        .align(0.5);
-      axis = d3$1.axisLeft(y);
-      break;
-    default:
-      throw new Error('Not allowed type for YAxis. Only allowed "time","linear" or "categorical". Got: ' + yAxisType);
-  }
-
-  return axis.tickSizeInner(-config.width)
-    .tickSizeOuter(0)
-    .tickPadding(20);
-};
-
-// _initializeYAxis(yAxisType = 'linear', config) {
-// let y = null,
-//   yAxis = null;
-//
-// switch (yAxisType) {
-//   case 'linear':
-//     y = scaleLinear().range([config.height, 0]);
-//     break;
-//   case 'categorical':
-//     y = scaleBand().rangeRound([config.height, 0])
-//       .padding(0.1)
-//       .align(0.5);
-//     break;
-//   default:
-//     throw new Error('Not allowed type for YAxis. Only allowed "time","linear" or "categorical". Got: ' + yAxisType);
-// }
-// return axisLeft(y)
-//   .tickSizeInner(-config.width)
-//   .tickSizeOuter(0)
-//   .tickPadding(20)
-//   .tickFormat((d) => d)
-//   .ticks(config.yticks, config.tickLabel);
-// }
-
-YAxis.prototype.transition = function transition (svg, time) {
-    if ( time === void 0 ) time = 200;
-
-  svg.selectAll('.y.axis').transition().duration(time).call(this.yAxis).on('end', this.yStyle);
-};
-
-YAxis.prototype.yStyle = function yStyle () {
-  d3$1.select(this).selectAll('g.tick text')
-    .style('font', '1.4em Montserrat, sans-serif')
-    .style('fill', function (d, i) { return !isEven(i) || i === 0 ? '#5e6b70' : '#1a2127'; });
-  d3$1.select(this).selectAll('g.tick line')
-    .style('stroke', function (d, i) { return isEven(i) && i !== 0 ? '#5e6b70' : '#dbdad8'; });
-};
-
-YAxis.prototype.updateDomainByBBox = function updateDomainByBBox (b) {
-  var y = this.yAxis.scale();
-  y.domain(b);
-};
-
-YAxis.prototype.updateDomainByKeys = function updateDomainByKeys (keys$$1) {
-  var y = this.yAxis.scale();
-  y.domain(keys$$1);
-};
-
-YAxis.prototype.render = function render (svg, config) {
-  var yAxis = this.yAxis,
-    width = config.width,
-    height = config.height;
-  svg
-    .append('g')
-    .attr('class', 'y axis')
-    .attr('stroke-dasharray', '1, 5')
-    .call(yAxis);
-
-  svg
-    .append('text')
-    .attr('class', 'yaxis-title')
-    .attr("transform", "rotate(-90)")
-    .attr("text-anchor", "middle")
-    .attr('x', 0 - height / 2)
-    .attr('y', 0 - 55)
-    .text(config.yAxisLabel)
-    .style('font', '0.8em Montserrat, sans-serif');
-
-};
-
-var XYAxes = function XYAxes(xAxisType, yAxisType, config) {
-  if (config === null) {
-    throw new Error('No chart context specified for XAxis');
-  }
-
-  this.x = new XAxis(xAxisType, config);
-  this.y = new YAxis(yAxisType, config);
-};
-
-XYAxes.prototype.transition = function transition (svg, time) {
-    if ( time === void 0 ) time = 200;
-
-  this.x.transition(svg, time);
-  this.y.transition(svg, time);
-};
-
-/**
- * This function is used when both x and y dial update their domains by x and y max/min values, respectively.
- */
-XYAxes.prototype.updateDomainByBBox = function updateDomainByBBox (b) {
-  this.x.updateDomainByBBox([b[0], b[1]]);
-  this.y.updateDomainByBBox([b[2], b[3]]);
-};
-
-/**
- * Used when x domain is caterogial (a set of keys) and y domain is linear.
- */
-XYAxes.prototype.updateDomainByKeysAndBBox = function updateDomainByKeysAndBBox (keys, bbox) {
-  this.x.updateDomainByKeys(keys);
-  this.y.updateDomainByBBox(bbox);
-};
-
-XYAxes.prototype.updateDomainByBBoxAndKeys = function updateDomainByBBoxAndKeys (bbox, keys){
-  this.x.updateDomainByBBox(bbox);
-  this.y.updateDomainByKeys(keys);
-};
-  
-XYAxes.prototype.render = function render (svg, config) {
-  this.x.render(svg, config);
-  this.y.render(svg, config);
-};
-  
-XYAxes.prototype.rescale = function rescale (width, height){
-  this.x.rescale(width, height);
-  this.y.rescale(width, height);
-};
-
-var Lineset = function Lineset(x, y) {
-  var this$1 = this;
-
-  this.xAxis = x.xAxis;
-  this.yAxis = y.yAxis;
-  this.lineGenerator = d3$1.line()
-    .x(function (d) { return this$1.xAxis.scale()(d.x); })
-    .y(function (d) { return this$1.yAxis.scale()(d.y); });
-};
-
-Lineset.prototype.update = function update (svg, config, data) {
-    var this$1 = this;
-
-  var dataSeries = d3$1.nest().key(function (d) { return d.key; }).entries(data),
-    series = null,
-    lines = null,
-    colorScale = config.colorScale;
-
-  svg.selectAll('g.serie').remove();
-
-  series = svg.selectAll('g.serie');
-  lines = series
-    .data(dataSeries, function (d) { return d.key; })
-    .enter()
-    .append('g')
-    .attr('class', 'serie')
-    .attr('stroke', function (d, i) { return colorScale(i); })
-    .append('svg:path')
-    .style('stroke', function (d, i) { return colorScale(i); })
-    .style('stroke-width', 1.3)
-    .style('fill', 'none')
-    .attr('d', function (d) { return this$1.lineGenerator(d.values); })
-    .attr('class', 'line');
-
-  this.svg = svg;
-};
-
-Lineset.prototype.render = function render (svg, config) {
-  //Do nothing, since lines render only when new data is received.
-};
-
-var Legend = function Legend() {};
-
-Legend.prototype.update = function update (svg, config, data) {
-  var dataSeries = d3$1.nest()
-      .key(function (d) { return d.key; })
-      .entries(data),
-    legend = null,
-    entries = null,
-    colorScale = config.colorScale,
-    height = config.height,
-    width = config.width;
-
-  if(dataSeries.length === 1 && dataSeries[0].key === 'undefined'){
-    console.warn('Not showing legend, since there is a valid key');
-    return;
-  }
-    
-  svg.selectAll('g.legend').remove();
-    
-  legend = svg.append('g').attr('class', 'legend');
-  entries = legend.selectAll('.legend-entry')
-    .data(dataSeries, function (d) { return d.key; })
-    .enter()
-    .append('g')
-    .attr('class', 'legend-entry');
-
-
-  entries.append('rect')
-    .attr('x', width + 10)
-    .attr('y', function (d, i) { return i * 25; })
-    .attr('height', 20)
-    .attr('width', 20)
-    .attr('fill', function (d, i) { return colorScale(i); })
-    .style('opacity', 0.8);
-
-  entries.append('text')
-    .attr("x", width + 25 + 10)
-    .attr("y", function (d, i) { return i * 25 + 7; })
-    .attr("dy", "0.55em")
-    .text(function (d) { return d.key; })
-    .style('font', '14px Montserrat, sans-serif');
-
-};
-
-Legend.prototype.render = function render (svg, config) {
-  //Do nothing, since legend render only when new data is received.
-};
-
-var Areaset = function Areaset(x, y) {
-  this.xAxis = x.xAxis;
-  this.yAxis = y.yAxis;
-};
-
-Areaset.prototype.update = function update (svg, config, data) {
-    var this$1 = this;
-
-  var dataSeries = d3$1.nest()
-      .key(function (d) { return d.key; })
-      .entries(data);
-
-  var series = null
-      , areas = null
-      , area$$1 = config.area
-      , colorScale = config.colorScale
-      , height = config.height
-      , areaOpacity = config.areaOpacity;
-
-  var areaGenerator = d3.area()
-      .x(function (d) { return this$1.xAxis.scale()(d.x); })
-      .y0(height)
-      .y1(function (d) { return this$1.yAxis.scale()(d.y); });
-
-  svg.selectAll('g.area').remove();
-
-  series = svg.selectAll('g.area');
-  areas = series
-      .data(dataSeries, function (d) { return d.key; })
-      .enter()
-      .append('g')
-      .attr('class', 'area')
-      .append('svg:path')
-      .style('fill', function (d, i) { return colorScale(i); })
-      .style('fill-opacity', areaOpacity)
-      .attr('d', function (d) { return areaGenerator(d.values); });
-
-  // series
-  //   .insert('path', ':first-child') //if not :first-child, area overlaps markers.
-  //   .attr('class', 'area')
-  //   .data(dataSeries)
-  //   .style('stroke', (d, i) => colorScale(i))
-  //   .style('fill', (d, i) => colorScale(i))
-  //   .style('fill-opacity', areaOpacity)
-  //   .attr('d', (d) => areaGenerator(d.values));
-
-  this.svg = svg;
-};
-
-Areaset.prototype.render = function render (svg, config) {
-  //Do nothing, since areas render only when new data is received.
-};
-
-var Pointset = function Pointset(x, y) {
-  this.xAxis = x.xAxis;
-  this.yAxis = y.yAxis;
-};
-Pointset.prototype.update = function update (svg, config, data) {
-    var this$1 = this;
-
-  var dataSeries = d3$1.nest()
-    .key(function (d) { return d.key; })
-    .entries(data),
-    markers = null,
-    markerShape = config.markerShape,
-    markerSize = config.markerSize,
-    markerOutlineWidth = config.markerOutlineWidth,
-    colorScale = config.colorScale,
-    points = null,
-    series = null;
-
-  svg.selectAll('g.points').remove();
-
-  series = svg.selectAll('g.points');
-
-  switch (markerShape) {
-    case 'dot':
-      points = series
-        .data(dataSeries, function (d) { return d.key; })
-        .enter()
-        .append('g')
-        .attr('class', 'points')
-        .style('fill', function (d, i) { return colorScale(i); })
-        .selectAll('circle')
-        .data(function (d) { return d.values; })
-        .enter()
-        .append('circle')
-        .attr('cx', function (d) { return this$1.xAxis.scale()(d.x); })
-        .attr('cy', function (d) { return this$1.yAxis.scale()(d.y); })
-        .attr('r', markerSize)
-        .attr('class', 'marker');
-      break;
-    case 'ring':
-      window.console.warn('Deprecated "circle" marker shape: use "dot" or "ring" instead');
-      points = series
-        .data(dataSeries, function (d) { return d.key; })
-        .enter()
-        .append('g')
-        .attr('class', 'points')
-        .style('stroke', function (d, i) { return colorScale(i); })
-        .selectAll('circle')
-        .data(function (d, i) { return d.values; })
-        .enter()
-        .append('circle')
-        .attr('cx', function (d) { return this$1.xAxis.scale()(d.x); })
-        .attr('cy', function (d) { return this$1.yAxis.scale()(d.y); })
-        .attr('r', markerSize)
-        .attr('class', 'marker')
-        .style('fill', 'white')
-        .style('stroke-width', markerOutlineWidth);
-      break;
-    // Deprecated circle option
-    case 'circle':
-      window.console.warn('Deprecated "circle" marker shape: use "dot" or "ring" instead');
-      points = series
-        .data(dataSeries, function (d) { return d.key; })
-        .enter()
-        .append('g')
-        .attr('class', 'points')
-        .style('stroke', function (d, i) { return colorScale(i); })
-        .selectAll('circle')
-        .data(function (d, i) { return d.values; })
-        .enter()
-        .append('circle')
-        .attr('cx', function (d) { return this$1.xAxis.scale()(d.x); })
-        .attr('cy', function (d) { return this$1.yAxis.scale()(d.y); })
-        .attr('r', markerSize)
-        .attr('class', 'lineMarker')
-        .style('fill', 'white')
-        .style('stroke-width', markerOutlineWidth);
-      break;
-    default:
-      points = series
-        .data(dataSeries, function (d) { return d.key; })
-        .enter()
-        .append('g')
-        .attr('class', 'points')
-        .style('stroke', function (d, i) { return colorScale(i); })
-        .selectAll('circle')
-        .data(function (d, i) { return d.values; })
-        .enter()
-        .append('circle')
-        .attr('cx', function (d) { return this$1.xAxis.scale()(d.x); })
-        .attr('cy', function (d) { return this$1.yAxis.scale()(d.y); })
-        .attr('r', markerSize)
-        .attr('class', 'lineMarker')
-        .style('fill', 'white')
-        .style('stroke-width', markerOutlineWidth);
-  }
-
-  markers = svg.selectAll('g.points circle');
-  markers
-    .on('mousedown.user', config.onDown)
-    .on('mouseup.user', config.onUp)
-    .on('mouseleave.user', config.onLeave)
-    .on('mouseover.user', config.onHover)
-    .on('click.user', config.onClick);
-
-  //this.interactiveElements = markers;
-};
-
-Pointset.prototype.render = function render (svg, config) {
-  //Do nothing, since points render only when new data is received.
-};
-
-function simple2stacked(data) {
-  return d3$1.nest().key(function (d) { return d.x; }).rollup(function (array) {
-    var r = {};
-    for (var i = 0; i < array.length; i++) {
-      var object = array[i];
-      if (object) {
-        r[object.key] = object.y;
-      }
+    Linechart.prototype.keepDrawing = function (datum) {
+        var maxNumberOfElements = this.config.get('maxNumberOfElements'), numberOfElements = this.data.length, position = -1, datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = this.data.concat(datum);
+        }
+        else {
+            this.data.push(datum);
+        }
+        if (numberOfElements > maxNumberOfElements) {
+            var position_1 = numberOfElements - maxNumberOfElements;
+            this.data = this.data.slice(position_1);
+        }
+        this.draw(copy(this.data));
+    };
+    return Linechart;
+}(Chart));
+
+var Barset = (function (_super) {
+    __extends(Barset, _super);
+    function Barset(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
     }
-    return r;
-  }).entries(data);
-}
+    Barset.prototype.render = function () {
+    };
+    Barset.prototype.update = function (data) {
+        var bars = null, stacked = this.config.get('stacked');
+        this.clean();
+        if (stacked) {
+            this.updateStacked(data);
+        }
+        else {
+            this.updateGrouped(data);
+        }
+        bars = this.svg.selectAll('g.barSeries rect');
+        bars
+            .on('mousedown.user', this.config.get('onDown'))
+            .on('mouseup.user', this.config.get('onUp'))
+            .on('mouseleave.user', this.config.get('onLeave'))
+            .on('mouseover.user', this.config.get('onHover'))
+            .on('click.user', this.config.get('onClick'));
+    };
+    Barset.prototype.updateStacked = function (data) {
+        var propertyKey = this.config.get('propertyKey');
+        var keys = d3.map(data, function (d) { return d[propertyKey]; }).keys();
+        var stack$$1 = this.config.get('stack');
+        data = stack$$1.keys(keys)(simple2stacked(data));
+        var colorScale = this.config.get('colorScale'), layer = this.svg.selectAll('.barSeries').data(data), layerEnter = layer.enter().append('g'), x = this.x.xAxis.scale(), y = this.y.yAxis.scale();
+        layer.merge(layerEnter)
+            .attr('class', 'barSeries')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; })
+            .style('fill', function (d, i) { return d[propertyKey] !== undefined ? colorScale(d[propertyKey]) : colorScale(i); })
+            .selectAll('rect')
+            .data(function (d) { return d; })
+            .enter().append('rect')
+            .attr("x", function (d) { return x(d.data[propertyKey]); })
+            .attr("y", function (d) { return y(d[1]); })
+            .attr("height", function (d) { return y(d[0]) - y(d[1]); })
+            .attr("width", x.bandwidth());
+    };
+    Barset.prototype.updateGrouped = function (data) {
+        var propertyKey = this.config.get('propertyKey');
+        var propertyX = this.config.get('propertyX');
+        var propertyY = this.config.get('propertyY');
+        var keys = d3.map(data, function (d) { return d[propertyKey]; }).keys(), colorScale = this.config.get('colorScale'), layer = null, x = this.x.xAxis.scale(), y = this.y.yAxis.scale(), xGroup = d3.scaleBand().domain(keys).range([0, x.bandwidth()]), height = this.config.get('height');
+        data = simple2nested(data, 'key');
+        layer = this.svg.selectAll('g.barSeries')
+            .data(data, function (d) { return d.values; });
+        layer.enter()
+            .append('g')
+            .attr('class', 'barSeries')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; })
+            .selectAll('rect')
+            .data(function (d) { return d.values; })
+            .enter()
+            .append('rect')
+            .attr('transform', function (d) { return 'translate(' + x(d[propertyX]) + ')'; })
+            .attr('width', xGroup.bandwidth())
+            .attr("x", function (d) { return xGroup(d[propertyKey]); })
+            .attr("y", function (d) { return y(d[propertyY]); })
+            .attr("height", function (d) { return height - y(d[propertyY]); })
+            .style('fill', function (d, i) { return d[propertyKey] !== undefined ? colorScale(d[propertyKey]) : colorScale(i); });
+    };
+    return Barset;
+}(Component));
 
-function simple2nested(data, key) {
-  if ( key === void 0 ) key = 'key';
-
-  return d3$1.nest().key(function (d) { return d[key]; }).entries(data);
-}
-
-
-
-function simple2Linked(data) {
-  var linkedData = { links: [], nodes: [] };
-  data.map(function (d) { return d.key === 'link' ? linkedData.links.push(d) : linkedData.nodes.push(d); });
-  return linkedData;
-}
-
-
-function convertPropretiesToTimeFormat(data, properties, format$$1) {
-  data.forEach(function (d) {
-    properties.map(function (p) {
-      d[p] = d3$1.timeParse(format$$1)(d[p]);
-    });
-  });
-}
-
-function convertByXYFormat(data, config) {
-  data.forEach(function (d) {
-    //parse x coordinate
-    switch (config.xAxisType) {
-      case 'time':
-        d.x = d3$1.timeParse(config.xAxisFormat)(d.x);
-        break;
-      case 'linear':
-        d.x = +d.x;
-        break;
+var SvgStrategyBarchart = (function (_super) {
+    __extends(SvgStrategyBarchart, _super);
+    function SvgStrategyBarchart() {
+        var _this = _super.call(this) || this;
+        _this.axes = new XYAxis();
+        _this.bars = new Barset(_this.axes.x, _this.axes.y);
+        return _this;
     }
-    //parse Y coordinate
-    switch (config.yAxisType) {
-      case 'time':
-        d.y = d3$1.timeParse(config.yAxisFormat)(d.y);
-        break;
-      case 'linear':
-        d.y = +d.y;
-        break;
-    }
-  });
-  return data;
-}
-
-function sortByField (array, field){
-    array.sort(function (e1, e2) {
-        var a = e1[field];
-        var b = e2[field];
-        return (a < b) ? -1 : (a > b) ? 1 : 0;   
-    });
-}
-
-var SvgLinechartStrategy = (function (SvgAxis$$1) {
-  function SvgLinechartStrategy(context) {
-    SvgAxis$$1.call(this, context);
-
-    this.axes = new XYAxes(this.config.xAxisType, 'linear', this.config);
-
-    this.lines = new Lineset(this.axes.x, this.axes.y);
-    this.legend = new Legend();
-
-    //Include components in the chart container
-    this.svgContainer
-      .add(this.axes)
-      .add(this.legend)
-      .add(this.lines);
-
-    if (this._checkArea(this.config)) {
-      this.areas = new Areaset(this.axes.x, this.axes.y);
-      this.svgContainer.add(this.areas);
-    }
-
-    if (this._checkMarkers(this.config)) {
-      this.points = new Pointset(this.axes.x, this.axes.y);
-      this.svgContainer.add(this.points);
-    }
-  }
-
-  if ( SvgAxis$$1 ) SvgLinechartStrategy.__proto__ = SvgAxis$$1;
-  SvgLinechartStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-  SvgLinechartStrategy.prototype.constructor = SvgLinechartStrategy;
-
-	/**
-	 * Renders a linechart based on data object
-	 * @param  {Object} data Data Object. Contains an array with x and y properties.
-	 * 
-	 */
-  SvgLinechartStrategy.prototype.draw = function draw (data) {
-    var svg = this.svgContainer.svg,
-      config = this.config,
-      needRescaling = this.config.needRescaling,
-      bbox = null;
-
-    //Transform data, if needed
-    convertByXYFormat(data, config);
-
-    //Sort data
-    sortByField(data, 'x');
-
-    //rescale, if needed.
-    if (needRescaling) {
-      this.rescale();
-    }
-
-
-    bbox = this._getDomainBBox(data);
-
-    this.axes.updateDomainByBBox(bbox);
-
-    //Create a transition effect for dial rescaling
-    this.axes.transition(svg, 200);
-
-    // Update legend
-    this.legend.update(svg, config, data);
-
-    //Now update lines
-    this.lines.update(svg, config, data);
-
-    if (config.areaOpacity > 0) {
-      // Update areas
-      this.areas.update(svg, config, data);
-    }
-
-    if (this._checkMarkers(config)) {
-      // Update points
-      this.points.update(svg, config, data);
-    }
-
-  };
-
-  SvgLinechartStrategy.prototype._getDomainBBox = function _getDomainBBox (data) {
-    var minX = d3$1.min(data, function (d) { return d.x; }),
-      maxX = d3$1.max(data, function (d) { return d.x; }),
-      minY = d3$1.min(data, function (d) { return d.y; }),
-      maxY = d3$1.max(data, function (d) { return d.y; });
-    return [minX, maxX, minY, maxY];
-  };
-
-
-  SvgLinechartStrategy.prototype._checkMarkers = function _checkMarkers (config) {
-    return config.markerSize > 0;
-  };
-  SvgLinechartStrategy.prototype._checkArea = function _checkArea (config) {
-    return config.areaOpacity > 0;
-  };
-
-  /**
-   * This method adds config options to the chart context.
-   * @param  {Object} config Config object
-   */
-  SvgLinechartStrategy.prototype._loadConfig = function _loadConfig (config) {
-    SvgAxis$$1.prototype._loadConfig.call(this, config, defaults);
-    //Markers
-    this.config.markerOutlineWidth = config.markerOutlineWidth || defaults.markerOutlineWidth;
-    this.config.markerShape = config.markerShape || defaults.markerShape;
-    this.config.markerSize = (typeof config.markerSize === 'undefined' || config.markerSize < 0) ? defaults.markerSize : config.markerSize;
-    //Area
-    this.config.areaOpacity = (typeof config.areaOpacity === 'undefined' || config.markerSize < 0) ? defaults.areaOpacity : config.areaOpacity;
-    return this;
-  };
-
-  return SvgLinechartStrategy;
-}(SvgAxis));
+    SvgStrategyBarchart.prototype.draw = function (data) {
+        var xAxisFormat = this.config.get('xAxisFormat'), xAxisType = this.config.get('xAxisType'), yAxisFormat = this.config.get('yAxisFormat'), yAxisType = this.config.get('yAxisType');
+        convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType);
+        sortByField(data, 'x');
+        this.container.updateComponents(data);
+    };
+    SvgStrategyBarchart.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var legend = this.config.get('legend');
+        this.container.add(this.axes).add(this.bars);
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+    };
+    return SvgStrategyBarchart;
+}(SvgChart));
 
 var defaults$1 = {
     selector: '#chart',
     colorScale: category5(),
-    //Stacked
-    stacked: true,
-    //Axes
-    xAxisType: 'linear',
+    stacked: false,
+    xAxisType: 'categorical',
     xAxisFormat: '',
-    xAxisLabel: null,
+    xAxisLabel: '',
+    xAxisGrid: false,
     yAxisType: 'linear',
     yAxisFormat: '',
-    yAxisLabel: null,
-    //margins
+    yAxisLabel: '',
+    yAxisShow: true,
+    yAxisGrid: true,
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
     marginLeft: 150,
-    //width & height
     width: '100%',
     height: 350,
-    //Events
-    onDown: function onDown(d) {
+    legend: true,
+    propertyX: 'x',
+    propertyY: 'y',
+    propertyKey: 'key',
+    stack: d3.stack().value(function (d, k) { return d.value[k]; }),
+    onDown: function (d) {
     },
-    onHover: function onHover(d) {
+    onHover: function (d) {
     },
-    onLeave: function onLeave(d) {
+    onLeave: function (d) {
     },
-    onClick: function onClick(d) {
+    onClick: function (d) {
+    },
+    onUp: function (d) {
     }
 };
 
-var Barset = function Barset(xAxis, yAxis) {
-  this.xAxis = xAxis;
-  this.yAxis = yAxis;
-  this.lineGenerator = d3$1.line()
-    .x(function (d) { return xAxis.scale()(d.x); })
-    .y(function (d) { return yAxis.scale()(d.y); });
-};
-
-
-Barset.prototype.update = function update (svg, config, data, method) {
-  var bars = null;
-
-  if (method === 'stacked') {
-    this._updateStacked(svg, config, data);
-  } else {
-    this._updateGrouped(svg, config, data);
-  }
-  bars = svg.selectAll('g.serie rect');
-  bars
-    .on('mousedown.user', config.onDown)
-    .on('mouseup.user', config.onUp)
-    .on('mouseleave.user', config.onLeave)
-    .on('mouseover.user', config.onHover)
-    .on('click.user', config.onClick);
-      
-  /**
-  TODO: Add default events?
-  bars
-    .on('mousedown.default', config.onDown)
-    .on('mouseup.default', config.onUp)
-    .on('mouseleave.default', function (){ select(this).transition().duration(150).attr('fill-opacity', 1)})
-    .on('mouseover.default',function (){ select(this).transition().duration(150).attr('fill-opacity', 0.9)})
-    .on('click.default', config.onClick);
-  **/
-
-  this.interactiveElements = bars;
-};
-
-Barset.prototype._updateStacked = function _updateStacked (svg, config, dataSeries) {
-  this._cleanCurrentSeries(svg);
-
-  var colorScale = config.colorScale,
-    layer = svg.selectAll('.serie').data(dataSeries),
-    layerEnter = layer.enter().append('g'),
-    layerMerge = null,
-    bar = null,
-    barEnter = null,
-    barMerge = null,
-    x = this.xAxis.scale(),
-    y = this.yAxis.scale();
-
-  layerMerge = layer.merge(layerEnter)
-    .attr('class', 'serie')
-    .attr('fill', function (d, i) { return colorScale(i); });
-
-  bar = layerMerge.selectAll('rect')
-    .data(function (d) { return d; });
-
-  barEnter = bar.enter().append('rect');
-
-  barMerge = bar.merge(barEnter)
-    .attr("x", function (d) { return x(d.data.key); })
-    .attr("y", function (d) { return y(d[1]); })
-    .attr("height", function (d) { return y(d[0]) - y(d[1]); })
-    .attr("width", x.bandwidth());
-};
-
-
-Barset.prototype._updateGrouped = function _updateGrouped (svg, config, data) {
-  this._cleanCurrentSeries(svg);
-
-  var keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-    colorScale = config.colorScale,
-    layer = svg.selectAll('.serie').data(data),
-    layerEnter = null,
-    layerMerge = null,
-    bar = null,
-    barEnter = null,
-    barMerge = null,
-    x = this.xAxis.scale(),
-    y = this.yAxis.scale(),
-    xGroup = d3$1.scaleBand().domain(keys).range([0, x.bandwidth()]),
-    height = config.height;
-
-  data = simple2nested(data, 'x');
-
-  layer = svg.selectAll('.serie').data(data);
-
-  layerEnter = layer.enter().append('g')
-    .attr('transform', function (d) { return 'translate(' + x(d.key) + ')'; });
-
-  layerMerge = layer.merge(layerEnter)
-    .attr('class', 'serie')
-    .attr('transform', function (d) { return 'translate(' + x(d.key) + ')'; });
-
-  bar = layerMerge.selectAll('rect')
-    .data(function (d) { return d.values; });
-
-  barEnter = bar.enter().append('rect');
-
-  barMerge = bar.merge(barEnter)
-    .attr('width', xGroup.bandwidth())
-    .attr("x", function (d) { return xGroup(d.key); })
-    .attr('fill', function (d, i) { return colorScale(i); })
-    .attr("y", function (d) { return y(d.y); })
-    .attr("height", function (d) { return height - y(d.y); });
-
-};
-
-Barset.prototype._getKeysFromData = function _getKeysFromData (data) {
-  var keys = [];
-  for (var p in data[0]) {
-    if (p !== 'total' && p !== 'key') {
-      keys.push(p);
+var Barchart = (function (_super) {
+    __extends(Barchart, _super);
+    function Barchart(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyBarchart(), data, userConfig, defaults$1) || this;
     }
-  }
-  return keys;
-
-};
-
-Barset.prototype._cleanCurrentSeries = function _cleanCurrentSeries (svg) {
-  svg.selectAll('.serie').remove();
-};
-
-Barset.prototype.render = function render (svg, config) {
-  //Do nothing, since bars render only when new data is received.
-};
-
-var SvgBarchartStrategy = (function (SvgAxis$$1) {
-  function SvgBarchartStrategy(context) {
-    SvgAxis$$1.call(this, context);
-
-    this.axes = new XYAxes('categorical', 'linear', this.config);
-    this.bars = new Barset(this.axes.x.xAxis, this.axes.y.yAxis);
-
-    this.legend = new Legend();
-
-    this.svgContainer
-      .add(this.axes)
-      .add(this.bars)
-      .add(this.legend);
-
-  }
-
-  if ( SvgAxis$$1 ) SvgBarchartStrategy.__proto__ = SvgAxis$$1;
-  SvgBarchartStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-  SvgBarchartStrategy.prototype.constructor = SvgBarchartStrategy;
-
-
-	/**
-	 * Renders a barchart based on data object
-	 * @param  {Object} data Data Object. Contains an array with x and y properties.
-	 * 
-	 */
-  SvgBarchartStrategy.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
- 
-    var svg = this.svgContainer.svg,
-      config = this.config,
-      keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-      data4stack = simple2stacked(data),
-      data4render = null,
-      isStacked = this.config.stacked,
-      stack$$1 = d3$1.stack().keys(keys)
-        .value(function (d, k) { return d.value[k]; })
-        .order(d3$1.stackOrderNone),
-      yMin = 0,
-      yMax = 0,
-      method = isStacked ? 'stacked' : 'grouped',
-      dataSeries = stack$$1(data4stack),
-      needRescaling = this.config.needRescaling;
-
-    //rescale, if needed.
-    if (needRescaling) {
-      this.rescale();
-    }
-
-
-    yMax = isStacked ?
-      d3$1.max(dataSeries, function (serie) { return d3$1.max(serie, function (d) { return d[1]; }); }) :
-      d3$1.max(data, function (d) { return d.y; });
-
-    this.axes.updateDomainByKeysAndBBox(d3$1.map(data, function (d) { return d.x; }).keys(), [yMin, yMax]);
-    this.axes.transition(svg, 200);
-
-    data4render = isStacked ? dataSeries : data;
-
-    this.bars.update(svg, config, data4render, method);
-
-    this.legend.update(svg, config, data);
-
-    this.data = data; // TODO: ? 
-
-  };
-
-
-  SvgBarchartStrategy.prototype.transition2Stacked = function transition2Stacked () {
-    this.config.stacked = true;
-  };
-
-  SvgBarchartStrategy.prototype.transition2Grouped = function transition2Grouped () {
-    this.config.stacked = false;
-  };
-
-	/**
-	 * This method adds config options to the chart context.
-	 * @param  {Object} config Config object
-	 */
-  SvgBarchartStrategy.prototype._loadConfig = function _loadConfig (config) {
-    SvgAxis$$1.prototype._loadConfig.call(this, config, defaults$1);
-    //Stacked
-    this.config.stacked = typeof (config.stacked) === 'undefined' ? defaults$1.stacked : config.stacked;    return this;
-  };
-
-  return SvgBarchartStrategy;
-}(SvgAxis));
-
-var defaults$2 =  {
-    selector: '#chart',
-    colorScale: category4(),
-    //Axes
-    xAxisType: 'time',
-    xAxisFormat: '%y/%m/%d',
-    xAxisLabel: null,
-    yAxisType: 'categorical',
-    yAxisFormat: '',
-    yAxisLabel: null,
-    //margins
-    marginTop: 20,
-    marginRight: 250,
-    marginBottom: 130,
-    marginLeft: 150,
-    //Width & height
-    width: '100%', // %, auto, or numeric 
-    height: 250,
-    //Events
-    onDown: function onDown(d) {
-    },
-    onHover: function onHover(d) {
-    },
-    onLeave: function onLeave(d) {
-    },
-    onClick: function onClick(d) {
-    },
-
-    maxNumberOfElements: 100, // used by keepDrawing method to reduce the number of elements in the current chart
-};
-
-var Streamset = function Streamset(xAxis, yAxis) {
-  var this$1 = this;
-
-  this.xAxis = xAxis;
-  this.yAxis = yAxis;
-
-  this.areaGenerator = d3$1.area()
-    .curve(d3$1.curveCardinal)
-    .x(function (d) { return this$1.xAxis.scale()((d3$1.timeParse(this$1.xDataFormat)(d.data.key))); }) // TODO: It seems d3.nest() transform Date object in
-    .y0(function (d) { return this$1.yAxis.scale()(d[0]); })
-    .y1(function (d) { return this$1.yAxis.scale()(d[1]); });
-};
-
-
-Streamset.prototype.update = function update (svg, config, data) {
-  var series = null;
-    
-  //Update date format, used by areaGenerator function due to a problem when nesting with d3.
-  this.xDataFormat = config.xAxisFormat;
-    
-  svg.selectAll('.serie').remove();
-
-  series = svg.selectAll('.serie')
-    .data(data)
-    .enter()
-    .append('g')
-    .attr('class', 'serie')
-    .style('stroke', function (d, i) { return config.colorScale(i); });
-
-  series
-    .append('path')
-    .attr('class', 'layer')
-    .attr('d', this.areaGenerator)
-    .style('fill', function (d, i) { return config.colorScale(i); });
-
-
-  series.exit().remove();
-    
-  series
-    .attr('opacity', 1)
-    .on('mousedown.user', config.onDown)
-    .on('mouseup.user', config.onUp)
-    .on('mouseleave.user', config.onLeave)
-    .on('mouseover.user', config.onHover)
-    .on('click.user', config.onClick);
-};
-
-Streamset.prototype.render = function render (svg, config) {
-  //Do nothing, since lines render only when new data is received.
-};
-
-var SvgStreamgraphStrategy = (function (SvgAxis$$1) {
-  function SvgStreamgraphStrategy(context) {
-        SvgAxis$$1.call(this, context);
-
-        this.x = new XAxis('time', this.config);
-        this.y = new YAxis('linear', this.config);
-
-        this.streams = new Streamset(this.x.xAxis, this.y.yAxis);
-
-        this.legend = new Legend();
-
-        //Include components in the chart container
-        this.svgContainer
-            .add(this.x)
-            .add(this.y, false) //No render y Axis
-            .add(this.legend)
-            .add(this.streams);
-    }
-
-  if ( SvgAxis$$1 ) SvgStreamgraphStrategy.__proto__ = SvgAxis$$1;
-  SvgStreamgraphStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-  SvgStreamgraphStrategy.prototype.constructor = SvgStreamgraphStrategy;
-    SvgStreamgraphStrategy.prototype.draw = function draw (data) {
-        var svg = this.svgContainer.svg,
-            config = this.config,
-            bbox = null,
-            keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-            xDataFormat = this.config.xAxisFormat,
-            data4stack = simple2stacked(data),
-            stack$$1 = d3$1.stack()
-                .keys(keys)
-                .value(function (d, k) { return d.value[k]; })
-                .order(d3$1.stackOrderInsideOut)
-                .offset(d3$1.stackOffsetWiggle),
-            dataSeries = stack$$1(data4stack),
-            needRescaling = this.config.needRescaling;
-       
-       convertPropretiesToTimeFormat(data, ['x'], xDataFormat);
-        
-        //Sort data
-        sortByField(data, 'x');
-        
-        //rescale, if needed.
-        if (needRescaling) {
-           this.rescale();
+    Barchart.prototype.fire = function (event$$1, data) {
+        if (event$$1 === 'transition') {
+            if (data === 'grouped') {
+                this.config.put('stacked', false);
+            }
+            else if (data === 'stacked') {
+                this.config.put('stacked', true);
+            }
+            this.draw();
         }
-        
-        bbox = this._getDomainBBox(data, dataSeries);
-
-        this.x.updateDomainByBBox([bbox[0], bbox[1]]);
-        this.y.updateDomainByBBox([bbox[2], bbox[3]]);
-        this.x.transition(svg, 200);
-        this.y.transition(svg, 200);
-
-        // Update legend
-        this.legend.update(svg, config, data);
-
-        // Update streams
-        this.streams.update(svg, config, dataSeries);
     };
-  
-    SvgStreamgraphStrategy.prototype._getDomainBBox = function _getDomainBBox (data, dataSeries) {
-        var minX = d3$1.min(data, function (d) { return new Date(d.x); }),
-            maxX = d3$1.max(data, function (d) { return new Date(d.x); }),
-            minY = d3$1.min(dataSeries, function (serie) { return d3$1.min(serie, function (d) { return d[0]; }); }),
-            maxY = d3$1.max(dataSeries, function (serie) { return d3$1.max(serie, function (d) { return d[1]; }); });
-
-        return [minX, maxX, minY, maxY];
-    };
-
-	/**
-	 * This method adds config options to the chart context.
-	 * @param  {Object} config Config object
-	 */
-    SvgStreamgraphStrategy.prototype._loadConfig = function _loadConfig (config) {
-        SvgAxis$$1.prototype._loadConfig.call(this, config,defaults$2);
-        return this;
-    };
-
-  return SvgStreamgraphStrategy;
-}(SvgAxis));
-
-var defaults$3 = {
-    selector: '#chart',
-    colorScale: category2(),
-    //Axes
-    xAxisType: 'time',
-    xAxisFormat: '%y/%m/%d',
-    xAxisLabel: null,
-    yAxisType: 'categorical',
-    yAxisFormat: '',
-    yAxisLabel: null,
-    //margins
-    marginTop: 20,
-    marginRight: 250,
-    marginBottom: 130,
-    marginLeft: 150,
-    //Width & height
-    width: '100%', // %, auto, or numeric 
-    height: 250,
-    //Events
-    onDown: function onDown(d) {
-    },
-    onHover: function onHover(d) {
-    },
-    onLeave: function onLeave(d) {
-    },
-    onClick: function onClick(d) {
-    },
-    maxNumberOfElements: 100, // used by keepDrawing method to reduce the number of elements in the current chart
-};
-
-var SvgStackedAreaStrategy = (function (SvgAxis$$1) {
-    function SvgStackedAreaStrategy(context) {
-        SvgAxis$$1.call(this, context);
-
-        this.axes = new XYAxes('time', 'linear', this.config);
-
-        this.streams = new Streamset(this.axes.x.xAxis, this.axes.y.yAxis);
-
-        this.legend = new Legend();
-
-        //Include components in the chart container
-        this.svgContainer
-            .add(this.axes)
-            .add(this.legend)
-            .add(this.streams);
-    }
-
-    if ( SvgAxis$$1 ) SvgStackedAreaStrategy.__proto__ = SvgAxis$$1;
-    SvgStackedAreaStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-    SvgStackedAreaStrategy.prototype.constructor = SvgStackedAreaStrategy;
-
-
-    SvgStackedAreaStrategy.prototype.draw = function draw (data) {
-        var svg = this.svgContainer.svg,
-            config = this.config,
-            bbox = null,
-            keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-            data4stack = simple2stacked(data),
-            xDataFormat = this.config.xAxisFormat,
-            stack$$1 = d3$1.stack()
-                .keys(keys)
-                .value(function (d, k) { return d.value[k]; })
-                .order(d3$1.stackOrderInsideOut)
-                .offset(d3$1.stackOffNone),
-            dataSeries = stack$$1(data4stack),
-            needRescaling = this.config.needRescaling;
-
-        //rescale, if needed.
-        if (needRescaling) {
-            this.rescale();
+    Barchart.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = datum;
         }
-
-        convertPropretiesToTimeFormat(data, ['x'], xDataFormat);
-
-        //Sort data
-        sortByField(data, 'x');
-
-        bbox = this._getDomainBBox(data, dataSeries);
-
-        this.axes.updateDomainByBBox(bbox);
-        this.axes.transition(svg, 200);
-
-        // Update legend
-        this.legend.update(svg, config, data);
-
-        // Update streams
-        this.streams.update(svg, config, dataSeries);
+        else {
+            var found = false;
+            for (var i = 0; i < this.data.length; i++) {
+                var d = this.data[i];
+                if (d['x'] === datum['x'] && d['key'] === datum['key']) {
+                    this.data[i] = datum;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                this.data.push(datum);
+            }
+        }
+        this.draw(copy(this.data));
     };
+    return Barchart;
+}(Chart));
 
-
-    SvgStackedAreaStrategy.prototype._getDomainBBox = function _getDomainBBox (data, dataSeries) {
-        var minX = d3$1.min(data, function (d) { return (d.x); }),
-            maxX = d3$1.max(data, function (d) { return (d.x); }),
-            minY = d3$1.min(dataSeries, function (serie) { return d3$1.min(serie, function (d) { return d[0]; }); }),
-            maxY = d3$1.max(dataSeries, function (serie) { return d3$1.max(serie, function (d) { return d[1]; }); });
-
-        return [minX, maxX, minY, maxY];
-    };
-
-	/**
-	 * This method adds config options to the chart context.
-	 * @param  {Object} config Config object
-	 */
-    SvgStackedAreaStrategy.prototype._loadConfig = function _loadConfig (config) {
-        SvgAxis$$1.prototype._loadConfig.call(this, config,defaults$3);
-    };
-
-    return SvgStackedAreaStrategy;
-}(SvgAxis));
-
-var defaults$4 = {
-    selector: '#chart',
-    colorScale: category3(),
-    //Axes
-    xAxisType: 'time',
-    xAxisFormat: '%y/%m/%d',
-    xAxisLabel: null,
-    yAxisType: 'categorical',
-    yAxisFormat: '%s',
-    yAxisLabel: null,
-    //margins
-    marginTop: 20,
-    marginRight: 250,
-    marginBottom: 30,
-    marginLeft: 50,
-    //Width & height
-    width: '100%', // %, auto, or numeric 
-    height: 250,
-    //Events
-    onDown: function onDown(d) {
-    },
-    onHover: function onHover(d) {
-    },
-    onLeave: function onLeave(d) {
-    },
-    onClick: function onClick(d) {
+var Dial = (function (_super) {
+    __extends(Dial, _super);
+    function Dial() {
+        return _super.call(this) || this;
     }
-};
+    Dial.prototype.render = function () {
+        var labels = null, invertColorScale = this.config.get('invertColorScale'), colorScale = this.config.get('colorScale'), width = this.config.get('width'), height = this.config.get('height'), ringWidth = this.config.get('ringWidth'), ringMargin = this.config.get('ringMargin'), ticks = this.config.get('ticks'), minAngle = this.config.get('minAngle'), maxAngle = this.config.get('maxAngle'), minLevel = this.config.get('minLevel'), maxLevel = this.config.get('maxLevel'), labelInset = this.config.get('labelInset'), scale = d3.scaleLinear()
+            .domain([minLevel, maxLevel])
+            .range([0, 1]), scaleMarkers = scale.ticks(ticks), range$$1 = maxAngle - minAngle, r = ((width > height) ?
+            height : width) / 2, translation = (function () { return 'translate(' + r + ',' + r + ')'; }), tickData = d3.range(ticks).map(function () { return 1 / ticks; }), arc$$1 = d3.arc()
+            .innerRadius(r - ringWidth - ringMargin)
+            .outerRadius(r - ringMargin)
+            .startAngle(function (d, i) { return deg2rad(minAngle + ((d * i) * range$$1)); })
+            .endAngle(function (d, i) { return deg2rad(minAngle + ((d * (i + 1)) * range$$1)); });
+        colorScale.domain([0, 1]);
+        var arcs = this.svg.append('g')
+            .attr('class', 'arc')
+            .attr('transform', translation);
+        var arcPaths = arcs.selectAll('path')
+            .data(tickData)
+            .enter().append('path')
+            .attr('id', function (d, i) { return 'sector-' + i; })
+            .attr('d', arc$$1);
+        arcPaths.attr('fill', function (d, i) { return colorScale(invertColorScale
+            ? (1 - d * i)
+            : (d * i)); });
+        labels = this.svg.append('g')
+            .attr('class', 'labels')
+            .attr('transform', translation);
+        labels.selectAll('text')
+            .data(scaleMarkers)
+            .enter().append('text')
+            .attr('transform', function (d) {
+            var ratio = scale(d);
+            var newAngle = minAngle + (ratio * range$$1);
+            return 'rotate(' + newAngle + ') translate(0,' + (labelInset - r) + ')';
+        })
+            .text(function (d) { return d; })
+            .style('text-anchor', 'middle')
+            .style('font', '18px Montserrat, sans-serif');
+    };
+    Dial.prototype.update = function () {
+    };
+    return Dial;
+}(Component));
 
-var TimeBoxset = function TimeBoxset(xAxis, yAxis) {
-  this.xAxis = xAxis;
-  this.yAxis = yAxis;
-
-};
-TimeBoxset.prototype.update = function update (svg, config, data) {
-  var colorScale = config.colorScale,
-    keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-    layer = svg.selectAll('.serie').data(data),
-    layerEnter = null,
-    layerMerge = null,
-    box = null,
-    boxEnter = null,
-    boxMerge = null,
-    extLanes = null,
-    yLanes = null,
-    yLanesBand = d3$1.scaleBand().range([0, keys.length + 1]).domain(keys),
-    x = this.xAxis.scale(),
-    y = this.yAxis.scale();
-
-  data = simple2nested(data);
-  extLanes = d3$1.extent(data, function (d, i) { return i; });
-  yLanes = d3$1.scaleLinear().domain([extLanes[0], extLanes[1] + 1]).range([0, config.height]);
-
-  layer = svg.selectAll('.serie').data(data);
-  layerEnter = layer.enter().append('g');
-
-  layerMerge = layer.merge(layerEnter)
-    .attr('class', 'serie');
-
-
-  box = layerMerge.selectAll('rect')
-    .data(function (d) { return d.values; });
-
-  boxEnter = box.enter().append('rect');
-
-  boxMerge = box.merge(boxEnter)
-    .attr('width', function (d) { return x(d.end) - x(d.start); })
-    .attr('x', function (d) { return x(d.start); })
-    .attr('y', function (d) { return y(d.key); })
-    .attr('fill', function (d) { return colorScale(parseInt(yLanesBand(d.key))); })
-    .attr('height', function () { return 0.8 * yLanes(1); });
-
-  box = svg.selectAll('g.serie rect');
-    
-  box
-    .on('mousedown.user', config.onDown)
-    .on('mouseup.user', config.onUp)
-    .on('mouseleave.user', config.onLeave)
-    .on('mouseover.user', config.onHover)
-    .on('click.user', config.onClick);
-
-};
-
-TimeBoxset.prototype.render = function render (svg, config) {
-  //Do nothing, since lines render only when new data is received.
-};
-
-var SvgSwimlaneStrategy = (function (SvgAxis$$1) {
-  function SvgSwimlaneStrategy(context) {
-    SvgAxis$$1.call(this, context);
-    this.axes = new XYAxes('time', 'categorical', this.config);
-    this.boxs = new TimeBoxset(this.axes.x.xAxis, this.axes.y.yAxis);
-    this.legend = new Legend();
-
-    this.svgContainer
-      .add(this.axes)
-      .add(this.boxs)
-      .add(this.legend);
-  }
-
-  if ( SvgAxis$$1 ) SvgSwimlaneStrategy.__proto__ = SvgAxis$$1;
-  SvgSwimlaneStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-  SvgSwimlaneStrategy.prototype.constructor = SvgSwimlaneStrategy;
-
-  SvgSwimlaneStrategy.prototype.draw = function draw (data) {
-    var svg = this.svgContainer.svg,
-      config = this.config,
-      dataFormat = this.config.xAxisFormat,
-      keys = d3$1.map(data, function (d) { return d.key; }).keys(),
-      bbox = null,
-      needRescaling = this.config.needRescaling;
-
-    convertPropretiesToTimeFormat(data, ['start', 'end'], dataFormat);
-    
-    //rescale, if needed.
-    if (needRescaling) {
-      this.rescale();
+var DialNeedle = (function (_super) {
+    __extends(DialNeedle, _super);
+    function DialNeedle() {
+        return _super.call(this) || this;
     }
-    
-    bbox = this._getBBox(data);
+    DialNeedle.prototype.render = function () {
+        var labels = null, invertColorScale = this.config.get('invertColorScale'), colorScale = this.config.get('colorScale'), width = this.config.get('width'), height = this.config.get('height'), ringWidth = this.config.get('ringWidth'), ringMargin = this.config.get('ringMargin'), ticks = this.config.get('ticks'), minAngle = this.config.get('minAngle'), maxAngle = this.config.get('maxAngle'), minLevel = this.config.get('minLevel'), maxLevel = this.config.get('maxLevel'), labelInset = this.config.get('labelInset'), needleNutRadius = this.config.get('needleNutRadius'), needleLenghtRatio = this.config.get('needleLenghtRatio'), scale = d3.scaleLinear()
+            .domain([minLevel, maxLevel])
+            .range([0, 1]), scaleMarkers = scale.ticks(ticks), range$$1 = maxAngle - minAngle, r = ((width > height) ?
+            height : width) / 2, needleLen = needleLenghtRatio * (r), translation = (function () { return 'translate(' + r + ',' + r + ')'; }), tickData = d3.range(ticks).map(function () { return 1 / ticks; }), arc$$1 = d3.arc()
+            .innerRadius(r - ringWidth - ringMargin)
+            .outerRadius(r - ringMargin)
+            .startAngle(function (d, i) { return deg2rad(minAngle + ((d * i) * range$$1)); })
+            .endAngle(function (d, i) { return deg2rad(minAngle + ((d * (i + 1)) * range$$1)); }), angleScale = d3.scaleLinear()
+            .domain([minLevel, maxLevel])
+            .range([90 + minAngle, 90 + maxAngle]);
+        this.svg.append('path')
+            .attr('class', 'needle')
+            .datum(0)
+            .attr('transform', function (d) { return "translate(" + r + ", " + r + ") rotate(" + (angleScale(d) - 90) + ")"; })
+            .attr('d', "M " + (0 - needleNutRadius) + " " + 0 + " L " + 0 + " " + (0 - needleLen) + " L " + needleNutRadius + " " + 0)
+            .style('fill', '#666666');
+        this.svg.append('circle')
+            .attr('class', 'needle')
+            .attr('transform', translation)
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', needleNutRadius)
+            .style('fill', '#666666');
+    };
+    DialNeedle.prototype.update = function (data) {
+        var datum = data[data.length - 1], width = this.config.get('width'), height = this.config.get('height'), needleNutRadius = this.config.get('needleNutRadius'), needleLenghtRatio = this.config.get('needleLenghtRatio'), propertyValue = this.config.get('propertyValue'), minAngle = this.config.get('minAngle'), maxAngle = this.config.get('maxAngle'), minLevel = this.config.get('minLevel'), maxLevel = this.config.get('maxLevel'), r = ((width > height) ?
+            height : width) / 2, needleLen = needleLenghtRatio * (r), angleScale = d3.scaleLinear()
+            .domain([minLevel, maxLevel])
+            .range([90 + minAngle, 90 + maxAngle]);
+        this.svg.select('.needle')
+            .transition()
+            .attr('transform', function (d) { return "translate(" + r + ", " + r + ") rotate(" + (angleScale(datum[propertyValue]) - 90) + ")"; })
+            .attr('d', "M " + (0 - needleNutRadius) + " " + 0 + " L " + 0 + " " + (0 - needleLen) + " L " + needleNutRadius + " " + 0);
+    };
+    return DialNeedle;
+}(Component));
 
-    this.axes.updateDomainByBBoxAndKeys(bbox, keys);
-    this.axes.transition(svg, 200);
+var TextIndicator = (function (_super) {
+    __extends(TextIndicator, _super);
+    function TextIndicator() {
+        var _this;
+        return _this;
+    }
+    TextIndicator.prototype.update = function (data) {
+        var datum = data[data.length - 1];
+        this.svg.select('.value')
+            .text(datum.value);
+        this.svg.select('.label')
+            .text(datum.label);
+    };
+    TextIndicator.prototype.render = function () {
+        var indicator = this.svg.append('g')
+            .attr('class', 'text-indicator')
+            .attr('pointer-events', 'none')
+            .style('text-anchor', 'middle')
+            .style('alignment-baseline', 'central');
+        indicator.append('text')
+            .attr('class', 'value')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('pointer-events', 'none')
+            .text('')
+            .style('text-anchor', 'middle');
+        indicator.append('text')
+            .attr('class', 'label')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('pointer-events', 'none')
+            .text('')
+            .style('transform', 'translate(0, 1.5em')
+            .style('text-anchor', 'middle');
+    };
+    TextIndicator.prototype.translate = function (x, y) {
+        this.svg
+            .select('g.text-indicator')
+            .attr('transform', "translate(" + x + ", " + y + ")");
+    };
+    return TextIndicator;
+}(Component));
 
-    this.boxs.update(svg, config, data);
-    this.legend.update(svg, config, data);
+var SvgStrategyGauge = (function (_super) {
+    __extends(SvgStrategyGauge, _super);
+    function SvgStrategyGauge() {
+        var _this = _super.call(this) || this;
+        _this.dial = new Dial();
+        _this.dialNeedle = new DialNeedle();
+        _this.textIndicator = new TextIndicator();
+        return _this;
+    }
+    SvgStrategyGauge.prototype.draw = function (data) {
+        this.container.updateComponents(data);
+    };
+    SvgStrategyGauge.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        this.container.add(this.dial).add(this.dialNeedle);
+        if (this.config.get('numericIndicator')) {
+            var width = this.config.get('width'), height = this.config.get('height');
+            var r = ((width > height) ? height : width) / 2;
+            var indicatorOffset = r + 75;
+            this.container.add(this.textIndicator);
+            this.textIndicator.translate(r, indicatorOffset);
+        }
+    };
+    return SvgStrategyGauge;
+}(SvgChart));
 
-  };
-  
-  SvgSwimlaneStrategy.prototype._getBBox = function _getBBox (data) {
-    return [
-      d3$1.min(data, function (d) { return (d.start); }),
-      d3$1.max(data, function (d) { return (d.end); })
-    ];
-  };
-
-
-  SvgSwimlaneStrategy.prototype._loadConfig = function _loadConfig (config) {
-    SvgAxis$$1.prototype._loadConfig.call(this, config, defaults$4);  
-    return this;
-  };
-
-  return SvgSwimlaneStrategy;
-}(SvgAxis));
-
-var defaults$5 =  {
+var defaults$2 = {
     selector: '#chart',
     colorScale: diverging_spectral2(),
     invertColorScale: true,
@@ -2619,439 +1346,695 @@ var defaults$5 =  {
     needleLenghtRatio: 0.8,
     numericIndicator: true,
     label: 'km/h',
-    //margins
     marginTop: 20,
     marginRight: 250,
     marginBottom: 30,
     marginLeft: 50,
-    //Width & height
-    width: '50%', // %, auto, or numeric
+    width: '50%',
     height: 250,
-    ticks: 10, // ticks for y dial.
+    ticks: 10,
+    propertyValue: 'value'
 };
 
-var Dial = function Dial(axisType, config) {
-  var this$1 = this;
+var Gauge = (function (_super) {
+    __extends(Gauge, _super);
+    function Gauge(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyGauge(), data, userConfig, defaults$2) || this;
+    }
+    Gauge.prototype.keepDrawing = function (datum) {
+        this.data = [datum[0]];
+        _super.prototype.draw.call(this);
+    };
+    return Gauge;
+}(Chart));
 
-  if (config === null) {
-    throw new Error('No chart context specified for polarAxis');
-  }
+var CanvasPointset = (function (_super) {
+    __extends(CanvasPointset, _super);
+    function CanvasPointset(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
+    }
+    CanvasPointset.prototype.update = function (data) {
+        var _this = this;
+        var propertyKey = this.config.get('propertyKey');
+        var propertyX = this.config.get('propertyX');
+        var propertyY = this.config.get('propertyY');
+        var markerShape = this.config.get('markerShape'), markerSize = this.config.get('markerSize'), colorScale = this.config.get('colorScale'), points = null, series = null, dataContainer = null, width = this.config.get('width'), height = this.config.get('height');
+        var shape = d3.symbol()
+            .size(markerSize)
+            .context(this.canvasCtx);
+        switch (markerShape) {
+            case 'dot':
+                shape.type(d3.symbolCircle);
+                break;
+            case 'ring':
+                shape.type(d3.symbolCircle);
+                break;
+            case 'cross':
+                shape.type(d3.symbolCross);
+                break;
+            case 'diamond':
+                shape.type(d3.symbolDiamond);
+                break;
+            case 'square':
+                shape.type(d3.symbolSquare);
+                break;
+            case 'star':
+                shape.type(d3.symbolStar);
+                break;
+            case 'triangle':
+                shape.type(d3.symbolTriangle);
+                break;
+            case 'wye':
+                shape.type(d3.symbolWye);
+                break;
+            case 'circle':
+                shape.type(d3.symbolCircle);
+                break;
+            default:
+                shape.type(d3.symbolCircle);
+        }
+        dataContainer = this.svg.append('proteic');
+        series = dataContainer.selectAll('proteic.g.points');
+        this.canvasCtx.clearRect(0, 0, width, height);
+        series
+            .data(data, function (d) { return d[propertyKey]; })
+            .enter()
+            .call(function (s) {
+            var self = _this;
+            s.each(function (d) {
+                self.canvasCtx.save();
+                self.canvasCtx.translate(self.x.xAxis.scale()(d[propertyX]), self.y.yAxis.scale()(d[propertyY]));
+                self.canvasCtx.beginPath();
+                self.canvasCtx.strokeStyle = colorScale(d[propertyKey]);
+                self.canvasCtx.fillStyle = colorScale(d[propertyKey]);
+                shape();
+                self.canvasCtx.closePath();
+                self.canvasCtx.stroke();
+                if (markerShape !== 'ring') {
+                    self.canvasCtx.fill();
+                }
+                self.canvasCtx.restore();
+            });
+        });
+    };
+    CanvasPointset.prototype.render = function () {
+        this.canvas = d3.select(this.config.get('selector')).append('canvas')
+            .attr('id', 'point-set-canvas')
+            .attr('width', this.config.get('width'))
+            .attr('height', this.config.get('height'))
+            .style('position', 'absolute')
+            .style('z-index', 2)
+            .style('transform', "translate(" + this.config.get('marginLeft') + "px, " + this.config.get('marginTop') + "px)");
+        this.canvasCtx = this.canvas.node().getContext('2d');
+    };
+    return CanvasPointset;
+}(Component));
 
-  this.r = (
-    (config.width > config.height) ?
-      config.height : config.width
-    ) / 2;
-  this.translation = (function () { return 'translate(' + this$1.r + ',' + this$1.r + ')'; }
-  );
-  config.colorScale.domain([0, 1]);
+var SvgStrategyScatterplot = (function (_super) {
+    __extends(SvgStrategyScatterplot, _super);
+    function SvgStrategyScatterplot() {
+        var _this = _super.call(this) || this;
+        _this.axes = new XYAxis();
+        _this.markers = new Pointset(_this.axes.x, _this.axes.y);
+        _this.canvasMarkers = new CanvasPointset(_this.axes.x, _this.axes.y);
+        return _this;
+    }
+    SvgStrategyScatterplot.prototype.draw = function (data) {
+        var xAxisFormat = this.config.get('xAxisFormat'), xAxisType = this.config.get('xAxisType'), yAxisFormat = this.config.get('yAxisFormat'), yAxisType = this.config.get('yAxisType');
+        convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType);
+        sortByField(data, 'x');
+        this.container.updateComponents(data);
+    };
+    SvgStrategyScatterplot.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var legend = this.config.get('legend');
+        this.container.add(this.axes);
+        if (this.config.get('canvas')) {
+            this.container.add(this.canvasMarkers);
+        }
+        else {
+            this.container.add(this.markers);
+        }
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+    };
+    return SvgStrategyScatterplot;
+}(SvgChart));
 
-  this.scale = d3$1.scaleLinear()
-      .domain([config.minLevel, config.maxLevel])
-      .range([0, 1]);
-
-  this.scaleMarks = this.scale.ticks(config.ticks);
-
-  this.range = config.maxAngle - config.minAngle;
-
-  this.arc = d3$1.arc()
-    .innerRadius(this.r - config.ringWidth - config.ringMargin)
-    .outerRadius(this.r - config.ringMargin)
-    .startAngle(function (d, i) {
-      var ratio = d * i;
-      return deg2rad(config.minAngle + (ratio * this$1.range));
-    })
-    .endAngle(function (d, i) {
-      var ratio = d * (i + 1);
-      return deg2rad(config.minAngle + (ratio * this$1.range));
-    });
-
-  this.tickData = d3$1.range(config.ticks)
-    .map(function () { return 1 / config.ticks; });
+var defaults$3 = {
+    selector: '#chart',
+    colorScale: category7(),
+    xAxisType: 'linear',
+    xAxisFormat: '.1f',
+    xAxisLabel: '',
+    xAxisGrid: true,
+    yAxisType: 'linear',
+    yAxisFormat: '.1f',
+    yAxisLabel: '',
+    yAxisShow: true,
+    yAxisGrid: true,
+    marginTop: 20,
+    marginRight: 250,
+    marginBottom: 130,
+    marginLeft: 150,
+    markerShape: 'circle',
+    markerSize: 15,
+    width: '100%',
+    height: 250,
+    legend: true,
+    propertyX: 'x',
+    propertyY: 'y',
+    propertyKey: 'key',
+    onDown: function (d) {
+    },
+    onHover: function (d) {
+    },
+    onLeave: function (d) {
+    },
+    onClick: function (d) {
+    },
+    onUp: function (d) {
+    },
+    maxNumberOfElements: 100,
+    canvas: false
 };
 
-Dial.prototype.render = function render (svg, config) {
-    var this$1 = this;
+var Scatterplot = (function (_super) {
+    __extends(Scatterplot, _super);
+    function Scatterplot(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyScatterplot(), data, userConfig, defaults$3) || this;
+    }
+    Scatterplot.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            if (this.data) {
+                this.data = this.data.concat(datum);
+            }
+            else {
+                this.data = datum;
+            }
+        }
+        else {
+            this.data.push(datum);
+        }
+        this.draw(copy(this.data));
+    };
+    return Scatterplot;
+}(Chart));
 
-  var labels = null;
+var Streamset = (function (_super) {
+    __extends(Streamset, _super);
+    function Streamset(xyAxes) {
+        var _this = _super.call(this) || this;
+        _this.xyAxes = xyAxes;
+        _this.areaGenerator = d3.area()
+            .curve(d3.curveCardinal)
+            .y0(function (d) { return _this.xyAxes.y.yAxis.scale()(d[0]); })
+            .y1(function (d) { return _this.xyAxes.y.yAxis.scale()(d[1]); });
+        return _this;
+    }
+    Streamset.prototype.render = function () {
+    };
+    Streamset.prototype.update = function (data) {
+        var _this = this;
+        var propertyKey = this.config.get('propertyKey');
+        var propertyX = this.config.get('propertyX');
+        var propertyY = this.config.get('propertyY');
+        this.clean();
+        var colorScale = this.config.get('colorScale'), onDown = this.config.get('onDown'), onUp = this.config.get('onUp'), onLeave = this.config.get('onLeave'), onHover = this.config.get('onHover'), onClick = this.config.get('onClick'), keys = d3.map(data, function (d) { return d[propertyKey]; }).keys(), data4stack = simple2stacked(data), stack$$1 = this.config.get('stack'), dataSeries = stack$$1(data4stack), series = null;
+        this.areaGenerator.x(function (d) { return _this.xyAxes.x.xAxis.scale()((new Date(d.data[propertyKey]))); });
+        series = this.svg.selectAll('.serie')
+            .data(dataSeries)
+            .enter()
+            .append('g')
+            .attr('class', 'serie')
+            .style('stroke', function (d, i) { return colorScale(d[propertyKey]); })
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; });
+        series
+            .append('path')
+            .attr('class', 'layer')
+            .attr('d', this.areaGenerator)
+            .style('fill', function (d, i) { return colorScale(d[propertyKey]); });
+        series.exit().remove();
+        series
+            .attr('opacity', 1)
+            .on('mousedown.user', onDown)
+            .on('mouseup.user', onUp)
+            .on('mouseleave.user', onLeave)
+            .on('mouseover.user', onHover)
+            .on('click.user', onClick);
+    };
+    return Streamset;
+}(Component));
 
-  // Append the ring
-  var arcs = svg.append('g')
-    .attr('class', 'arc')
-    .attr('transform', this.translation);
+var SvgStrategyStreamgraph = (function (_super) {
+    __extends(SvgStrategyStreamgraph, _super);
+    function SvgStrategyStreamgraph() {
+        var _this = _super.call(this) || this;
+        _this.axes = new XYAxis();
+        _this.streams = new Streamset(_this.axes);
+        return _this;
+    }
+    SvgStrategyStreamgraph.prototype.draw = function (data) {
+        var xAxisFormat = this.config.get('xAxisFormat'), xAxisType = this.config.get('xAxisType'), yAxisFormat = this.config.get('yAxisFormat'), yAxisType = this.config.get('yAxisType');
+        convertPropretiesToTimeFormat(data, ['x'], xAxisFormat);
+        sortByField(data, 'x');
+        this.container.updateComponents(data);
+    };
+    SvgStrategyStreamgraph.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var markerSize = this.config.get('markerSize'), areaOpacity = this.config.get('areaOpacity'), legend = this.config.get('legend');
+        this.container.add(this.axes).add(this.streams);
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+    };
+    return SvgStrategyStreamgraph;
+}(SvgChart));
 
-  // Append the ring sectors
-  var arcPaths = arcs.selectAll('path')
-    .data(this.tickData)
-    .enter().append('path')
-    // ID for textPath linking
-    .attr('id', function (d, i) { return 'sector-' + i; })
-    .attr('d', this.arc);
-
-  // Fill colors
-  if (config.invertColorScale) {
-    arcPaths.attr('fill', function (d, i) { return config.colorScale(1 - d * i); });
-  } else {
-    arcPaths.attr('fill', function (d, i) { return config.colorScale(d * i); });
-  }
-
-  // Apend the scale labels
-  labels = svg.append('g')
-    .attr('class', 'labels')
-    .attr('transform', this.translation);
-
-  // // Append scale marker labels
-  labels.selectAll('text')
-    .data(this.scaleMarks)
-    .enter().append('text')
-    .attr('transform', function (d) {
-      var ratio = this$1.scale(d);
-      var newAngle = config.minAngle + (ratio * this$1.range);
-      return 'rotate(' + newAngle + ') translate(0,' + (config.labelInset - this$1.r) + ')';
-    })
-    .text(function (d) { return d; })
-    .style('text-anchor', 'middle')
-    .style('font', '18px Montserrat, sans-serif');
+var defaults$4 = {
+    selector: '#chart',
+    colorScale: category4(),
+    xAxisType: 'time',
+    xAxisFormat: '%y/%m/%d',
+    xAxisLabel: '',
+    xAxisGrid: true,
+    yAxisType: 'linear',
+    yAxisFormat: '',
+    yAxisLabel: '',
+    yAxisShow: false,
+    yAxisGrid: false,
+    marginTop: 20,
+    marginRight: 250,
+    marginBottom: 130,
+    marginLeft: 150,
+    width: '100%',
+    height: 250,
+    legend: true,
+    propertyX: 'x',
+    propertyY: 'y',
+    propertyKey: 'key',
+    stack: d3.stack().value(function (d, k) { return d.value[k]; }).order(d3.stackOrderInsideOut).offset(d3.stackOffsetWiggle),
+    stacked: true,
+    onDown: function (d) {
+    },
+    onHover: function (d) {
+    },
+    onLeave: function (d) {
+    },
+    onClick: function (d) {
+    },
+    onUp: function (d) {
+    },
+    maxNumberOfElements: 100,
 };
 
-var DialNeedle = function DialNeedle(axisType, config) {
-  var this$1 = this;
+var Streamgraph = (function (_super) {
+    __extends(Streamgraph, _super);
+    function Streamgraph(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyStreamgraph(), data, userConfig, defaults$4) || this;
+    }
+    Streamgraph.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = this.data.concat(datum);
+        }
+        else {
+            this.data.push(datum);
+        }
+        this.draw(copy(this.data));
+    };
+    return Streamgraph;
+}(Chart));
 
-  if (config === null) {
-    throw new Error('No chart context specified for polarAxis');
-  }
-
-  this.r = (
-    (config.width > config.height) ?
-      config.height : config.width
-    ) / 2;
-
-  this.needleLen = config.needleLenghtRatio * (this.r);
-
-  this.translation = (function () { return 'translate(' + this$1.r + ',' + this$1.r + ')'; }
-  );
-  config.colorScale.domain([0, 1]);
-
-  this.scale = d3$1.scaleLinear()
-      .domain([config.minLevel, config.maxLevel])
-      .range([0, 1]);
-
-  this.angleScale = d3$1.scaleLinear()
-    .domain([config.minLevel, config.maxLevel])
-    .range([90 + config.minAngle, 90 + config.maxAngle]);
-
-  this.scaleMarks = this.scale.ticks(config.ticks);
-
-  this.range = config.maxAngle - config.minAngle;
-
-  this.arc = d3$1.arc()
-    .innerRadius(this.r - config.ringWidth - config.ringMargin)
-    .outerRadius(this.r - config.ringMargin)
-    .startAngle(function (d, i) {
-      var ratio = d * i;
-      return deg2rad(config.minAngle + (ratio * this$1.range));
-    })
-    .endAngle(function (d, i) {
-      var ratio = d * (i + 1);
-      return deg2rad(config.minAngle + (ratio * this$1.range));
-    });
-
-  this.tickData = d3$1.range(config.ticks)
-    .map(function () { return 1 / config.ticks; });
+var defaults$5 = {
+    selector: '#chart',
+    colorScale: category2(),
+    xAxisType: 'time',
+    xAxisFormat: '%y/%m/%d',
+    xAxisLabel: '',
+    xAxisGrid: true,
+    yAxisType: 'linear',
+    yAxisFormat: '',
+    yAxisLabel: '',
+    yAxisShow: true,
+    yAxisGrid: true,
+    marginTop: 20,
+    marginRight: 250,
+    marginBottom: 130,
+    marginLeft: 150,
+    width: '100%',
+    height: 250,
+    legend: true,
+    propertyX: 'x',
+    propertyY: 'y',
+    propertyKey: 'key',
+    stacked: true,
+    stack: d3.stack().value(function (d, k) { return d.value[k]; }).order(d3.stackOrderInsideOut).offset(d3.stackOffsetNone),
+    onDown: function (d) {
+    },
+    onHover: function (d) {
+    },
+    onLeave: function (d) {
+    },
+    onClick: function (d) {
+    },
+    onUp: function (d) {
+    },
+    maxNumberOfElements: 100,
 };
 
-DialNeedle.prototype.update = function update (svg, config, data, method) {
-    var this$1 = this;
+var StackedArea = (function (_super) {
+    __extends(StackedArea, _super);
+    function StackedArea(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyStreamgraph(), data, userConfig, defaults$5) || this;
+    }
+    StackedArea.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = this.data.concat(datum);
+        }
+        else {
+            this.data.push(datum);
+        }
+        this.draw(copy(this.data));
+    };
+    return StackedArea;
+}(Chart));
 
-  var datum = data[data.length - 1];
+var Timeboxset = (function (_super) {
+    __extends(Timeboxset, _super);
+    function Timeboxset(xyAxes) {
+        var _this = _super.call(this) || this;
+        _this.xyAxes = xyAxes;
+        return _this;
+    }
+    Timeboxset.prototype.render = function () {
+    };
+    Timeboxset.prototype.update = function (data) {
+        var propertyKey = this.config.get('propertyKey');
+        var propertyStart = this.config.get('propertyStart');
+        var propertyEnd = this.config.get('propertyEnd');
+        var colorScale = this.config.get('colorScale'), height = this.config.get('height'), onDown = this.config.get('onDown'), onUp = this.config.get('onUp'), onLeave = this.config.get('onLeave'), onHover = this.config.get('onHover'), onClick = this.config.get('onClick'), keys = d3.map(data, function (d) { return d[propertyKey]; }).keys(), layer = this.svg.selectAll('.serie').data(data), layerEnter = null, layerMerge = null, box = null, boxEnter = null, boxMerge = null, extLanes = null, yLanes = null, yLanesBand = d3.scaleBand().range([0, keys.length + 1]).domain(keys), x = this.xyAxes.x.xAxis.scale(), y = this.xyAxes.y.yAxis.scale();
+        data = simple2nested(data);
+        extLanes = d3.extent(data, function (d, i) { return i; });
+        yLanes = d3.scaleLinear().domain([extLanes[0], extLanes[1] + 1]).range([0, height]);
+        layer = this.svg.selectAll('.serie').data(data);
+        layerEnter = layer.enter().append('g');
+        layerMerge = layer.merge(layerEnter)
+            .attr('class', 'serie')
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d[propertyKey]; });
+        box = layerMerge.selectAll('rect')
+            .data(function (d) { return d.values; });
+        boxEnter = box.enter().append('rect');
+        boxMerge = box.merge(boxEnter)
+            .attr('width', function (d) { return x(d[propertyEnd]) - x(d[propertyStart]); })
+            .attr('x', function (d) { return x(d[propertyStart]); })
+            .attr('y', function (d) { return y(d[propertyKey]); })
+            .attr('height', function () { return 0.8 * yLanes(1); })
+            .style('fill', function (d) { return colorScale(d[propertyKey]); });
+        box = this.svg.selectAll('g.serie rect');
+        box
+            .on('mousedown.user', onDown)
+            .on('mouseup.user', onUp)
+            .on('mouseleave.user', onLeave)
+            .on('mouseover.user', onHover)
+            .on('click.user', onClick);
+    };
+    return Timeboxset;
+}(Component));
 
-  this.needle
-    .transition()
-    .attr('transform', function (d) { return ("translate(" + (this$1.r) + ", " + (this$1.r) + ") rotate(" + (this$1.angleScale(datum.value) - 90) + ")"); })
-    .attr('d', ("M " + (0 - config.needleNutRadius) + " " + (0) + " L " + (0) + " " + (0 - this.needleLen) + " L " + (config.needleNutRadius) + " " + (0)));
-};
-
-DialNeedle.prototype.render = function render (svg, config) {
-    var this$1 = this;
-
-  // Update the needle
-  this.needle = svg.append('path')
-    .attr('class', 'needle')
-    .datum(0)
-    .attr('transform', function (d) { return ("translate(" + (this$1.r) + ", " + (this$1.r) + ") rotate(" + (this$1.angleScale(d) - 90) + ")"); })
-    .attr('d', ("M " + (0 - config.needleNutRadius) + " " + (0) + " L " + (0) + " " + (0 - this.needleLen) + " L " + (config.needleNutRadius) + " " + (0)))
-    .style('fill', '#666666');
-
-  // Append needle nut
-  svg.append('circle')
-    .attr('class', 'needle')
-    .attr('transform', this.translation)
-    .attr('cx', 0)
-    .attr('cy', 0)
-    .attr('r', config.needleNutRadius)
-    .style('fill', '#666666');
-};
-
-var TextIndicator = function TextIndicator(config) {
-  if (config === null) {
-    throw new Error('No chart context specified for polarAxis');
-  }
-
-  this.translation = config.textIndicatorTranslation;
-};
-
-TextIndicator.prototype.update = function update (svg, value, label) {
-  svg.select('.value')
-    .text(value);
-  svg.select('.label')
-    .text(label);
-};
-
-TextIndicator.prototype.render = function render (svg, config) {
-  var indicator = svg.append('g')
-    .attr('class', 'text-indicator')
-    .attr('pointer-events', 'none')
-    .style('text-anchor', 'middle')
-    .style('alignment-baseline', 'central');
-
-  if (this.translation) {
-    indicator.attr('transform', this.translation);
-  }
-
-  indicator.append('text')
-    .attr('class', 'value')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('pointer-events', 'none')
-    .text('0')
-    .style('font', '48px Montserrat, sans-serif')
-    .style('text-anchor', 'middle');
-
-  indicator.append('text')
-    .attr('class', 'label')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('pointer-events', 'none')
-    .text('')
-    .style('font', '24px Montserrat, sans-serif')
-    .style('transform', 'translate(0, 1.5em')
-    .style('text-anchor', 'middle');
-};
-
-var SvgGaugeStrategy = function SvgGaugeStrategy(context) {
-  this._loadConfig(context.config);
-  this.svgContainer = new SvgContainer(this.config);
-  var config = this.config;
-
-  this.dial = new Dial('linear', config);
-  this.needle = new DialNeedle('linear', config);
-
-  this.svgContainer
-    .add(this.dial)
-    .add(this.needle);
-
-  if (config.numericIndicator) {
-    var r = (
-      (config.width > config.height) ?
-        config.height : config.width
-    ) / 2;
-    var indicatorOffset = r + 75;
-    config.textIndicatorTranslation = 'translate(' + r + ',' + indicatorOffset + ')';
-    this.textIndicator = new TextIndicator(config);
-    this.svgContainer.add(this.textIndicator);
-  }
-};
-
-	/**
-	 * Renders a gauge chart based on data object
-	 * @param{Object} data Data Object. Contains a numeric value.
-	 *
-	 */
-SvgGaugeStrategy.prototype.draw = function draw (data) {
-  var datum = data[data.length - 1],
-    svg = this.svgContainer.svg,
-    config = this.config;
-
-  this.needle.update(svg, config, data);
-  if (config.numericIndicator) {
-    this.textIndicator.update(svg, datum.value, config.label);
-  }
-};
-
-	/**
-	 * This method adds config options to the chart context.
-	 * @param{Object} config Config object
-	 */
-SvgGaugeStrategy.prototype._loadConfig = function _loadConfig (config) {
-  this.config = {};
-  //Selector
-  this.config.selector = config.selector || defaults$5.selector;
-  //Margins 
-  this.config.marginTop = config.marginTop || defaults$5.marginTop;
-  this.config.marginLeft = config.marginLeft || defaults$5.marginLeft;
-  this.config.marginRight = config.marginRight || defaults$5.marginRight;
-  this.config.marginBottom = config.marginBottom || defaults$5.marginBottom;
-  //Width & height
-  this.config.width = config.width ?
-    calculateWidth(config.width, this.config.selector) - this.config.marginLeft - this.config.marginRight
-    : calculateWidth(defaults$5.width, this.config.selector) - this.config.marginLeft - this.config.marginRight;
-  this.config.height = config.height || defaults$5.height;
-
-  this.config.colorScale = config.colorScale || defaults$5.colorScale;
-  this.config.minLevel = config.minLevel || defaults$5.minLevel;
-  this.config.maxLevel = config.maxLevel || defaults$5.maxLevel;
-  this.config.minAngle = config.minAngle || defaults$5.minAngle;
-  this.config.maxAngle = config.maxAngle || defaults$5.maxAngle;
-  this.config.ticks = config.ticks || defaults$5.ticks;
-  this.config.ringWidth = config.ringWidth || defaults$5.ringWidth;
-  this.config.ringMargin = config.ringMargin || defaults$5.ringMargin;
-  this.config.labelInset = config.labelInset || defaults$5.labelInset;
-  this.config.needleNutRadius = config.needleNutRadius || defaults$5.needleNutRadius;
-  this.config.needleLenghtRatio = config.needleLenghtRatio || defaults$5.needleLenghtRatio;
-  this.config.invertColorScale = typeof (config.invertColorScale) === 'undefined' ? defaults$5.invertColorScale : config.invertColorScale;
-  this.config.numericIndicator = typeof (config.numericIndicator) === 'undefined' ? defaults$5.numericIndicator : config.numericIndicator;
-  this.config.label = config.label || defaults$5.label;
-
-
-  return this;
-};
+var SvgStrategySwimlane = (function (_super) {
+    __extends(SvgStrategySwimlane, _super);
+    function SvgStrategySwimlane() {
+        var _this = _super.call(this) || this;
+        _this.axes = new XYAxis();
+        _this.boxes = new Timeboxset(_this.axes);
+        return _this;
+    }
+    SvgStrategySwimlane.prototype.draw = function (data) {
+        var xAxisFormat = this.config.get('xAxisFormat');
+        convertPropretiesToTimeFormat(data, ['start', 'end'], xAxisFormat);
+        sortByField(data, 'start');
+        this.container.updateComponents(data);
+    };
+    SvgStrategySwimlane.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var markerSize = this.config.get('markerSize'), areaOpacity = this.config.get('areaOpacity'), legend = this.config.get('legend');
+        this.container.add(this.axes);
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend).add(this.boxes);
+        }
+    };
+    return SvgStrategySwimlane;
+}(SvgChart));
 
 var defaults$6 = {
-  selector: '#chart',
-  width: '100%', // %, auto, or numeric 
-  height: 250,
-  yAxisLabel: null,
-  //margins
-  marginTop: 20,
-  marginRight: 250,
-  marginBottom: 30,
-  marginLeft: 50,
+    selector: '#chart',
+    colorScale: category3(),
+    xAxisType: 'time',
+    xAxisFormat: '%y/%m/%d',
+    xAxisLabel: '',
+    xAxisGrid: true,
+    yAxisType: 'categorical',
+    yAxisFormat: 's',
+    yAxisLabel: '',
+    yAxisShow: true,
+    yAxisGrid: true,
+    marginTop: 20,
+    marginRight: 250,
+    marginBottom: 30,
+    marginLeft: 50,
+    width: '100%',
+    height: 250,
+    legend: true,
+    propertyStart: 'start',
+    propertyEnd: 'end',
+    propertyKey: 'key',
+    onDown: function (d) {
+    },
+    onHover: function (d) {
+    },
+    onLeave: function (d) {
+    },
+    onClick: function (d) {
+    },
+    onUp: function (d) {
+    }
 };
 
-var Nodeset = function Nodeset(config) {
-  var this$1 = this;
+var Swimlane = (function (_super) {
+    __extends(Swimlane, _super);
+    function Swimlane(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategySwimlane(), data, userConfig, defaults$6) || this;
+    }
+    Swimlane.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = this.data.concat(datum);
+        }
+        else {
+            this.data.push(datum);
+        }
+        this.draw(copy(this.data));
+    };
+    return Swimlane;
+}(Chart));
 
-  this.config = config;
-  var width = config.width,
-    height = config.height;
+var XRadialAxis = (function (_super) {
+    __extends(XRadialAxis, _super);
+    function XRadialAxis() {
+        return _super.call(this) || this;
+    }
+    XRadialAxis.prototype.update = function (data) { };
+    XRadialAxis.prototype.render = function () {
+        this._xRadialAxis = d3.scaleLinear().range([0, 2 * Math.PI]);
+    };
+    Object.defineProperty(XRadialAxis.prototype, "xRadialAxis", {
+        get: function () {
+            return this._xRadialAxis;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return XRadialAxis;
+}(Component));
 
-  this.simulation = d3$1.forceSimulation()
-    .force("link", d3$1.forceLink().id(function (d) { return d.id; }))
-    .force("charge", d3$1.forceManyBody())
-    .force("center", d3$1.forceCenter(width / 2, height / 2));
+var YRadialAxis = (function (_super) {
+    __extends(YRadialAxis, _super);
+    function YRadialAxis() {
+        return _super.call(this) || this;
+    }
+    YRadialAxis.prototype.render = function () {
+        var width = this.config.get('width'), height = this.config.get('height'), radius = null;
+        radius = (Math.min(width, height) / 2) - 10;
+        this._yRadialAxis = d3.scaleSqrt().range([0, radius]);
+    };
+    
+    YRadialAxis.prototype.update = function (data) { };
+    
+    Object.defineProperty(YRadialAxis.prototype, "yRadialAxis", {
+        get: function () {
+            return this._yRadialAxis;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return YRadialAxis;
+}(Component));
 
+var RadialAxes = (function (_super) {
+    __extends(RadialAxes, _super);
+    function RadialAxes() {
+        var _this = _super.call(this) || this;
+        _this._x = new XRadialAxis();
+        _this._y = new YRadialAxis();
+        return _this;
+    }
+    RadialAxes.prototype.configure = function (config, svg) {
+        _super.prototype.configure.call(this, config, svg);
+        this._x.configure(config, svg);
+        this._y.configure(config, svg);
+    };
+    RadialAxes.prototype.render = function () {
+        this._x.render();
+        this._y.render();
+    };
+    RadialAxes.prototype.update = function (data) {
+        this._x.update(data);
+        this._y.update(data);
+    };
+    Object.defineProperty(RadialAxes.prototype, "x", {
+        get: function () {
+            return this._x;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(RadialAxes.prototype, "y", {
+        get: function () {
+            return this._y;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return RadialAxes;
+}(Component));
 
-  this.dragstarted = function (d) {
-    if (!d3$1.event.active) { this$1.simulation.alphaTarget(0.3).restart(); }
-    d.fx = d.x;
-    d.fy = d.y;
-  };
+var SunburstDisk = (function (_super) {
+    __extends(SunburstDisk, _super);
+    function SunburstDisk(x, y) {
+        var _this = _super.call(this) || this;
+        _this.x = x;
+        _this.y = y;
+        return _this;
+    }
+    SunburstDisk.prototype.removePaths = function () {
+        this.svg.selectAll('path').remove();
+    };
+    SunburstDisk.prototype.getAncestors = function (node) {
+        var path = [];
+        var current = node;
+        while (current.parent) {
+            path.unshift(current);
+            current = current.parent;
+        }
+        return path;
+    };
+    SunburstDisk.prototype.update = function (data) {
+        var _this = this;
+        var arcGen = d3.arc()
+            .startAngle(function (d) { return Math.max(0, Math.min(2 * Math.PI, _this.x.xRadialAxis(d.x0))); })
+            .endAngle(function (d) { return Math.max(0, Math.min(2 * Math.PI, _this.x.xRadialAxis(d.x1))); })
+            .innerRadius(function (d) { return Math.max(0, _this.y.yRadialAxis(d.y0)); })
+            .outerRadius(function (d) { return Math.max(0, _this.y.yRadialAxis(d.y1)); });
+        var colorScale = this.config.get('colorScale');
+        this.removePaths();
+        var root = d3.stratify()
+            .id(function (d) { return d.id; })
+            .parentId(function (d) { return d.parent; })(data);
+        root.sum(function (d) { return d.value; });
+        d3.partition()(root);
+        var paths = this.svg.selectAll('path')
+            .data(root.descendants())
+            .enter().append('path')
+            .attr('d', arcGen)
+            .style('fill', function (d) {
+            if (!d.parent) {
+                return 'white';
+            }
+            else {
+                return colorScale(d.data.label);
+            }
+        })
+            .style('stroke', '#fff')
+            .style('stroke-width', '2')
+            .style('shape-rendering', 'crispEdge');
+        paths
+            .on('mouseover.default', function (d) {
+            var ancestors = _this.getAncestors(d);
+            if (ancestors.length > 0) {
+                _this.svg.selectAll('path')
+                    .style('opacity', 0.3);
+            }
+            _this.svg.selectAll('path')
+                .filter(function (node) { return ancestors.indexOf(node) >= 0; })
+                .style('opacity', 1);
+            _this.svg.select('.text-indicator .label').text(d.data.label);
+            _this.svg.select('.text-indicator .value').text(d.value);
+        })
+            .on('mouseout.default', function (d) {
+            _this.svg.selectAll('path').style('opacity', 1);
+            _this.svg.select('.text-indicator .label').style('font-weight', 'normal');
+            _this.svg.select('.text-indicator .label').text('');
+            _this.svg.select('.text-indicator .value').text('');
+        });
+        paths
+            .on('mousedown.user', this.config.get('onDown'))
+            .on('mouseup.user', this.config.get('onUp'))
+            .on('mouseleave.user', this.config.get('onLeave'))
+            .on('mouseover.user', this.config.get('onHover'))
+            .on('click.user', this.config.get('onClick'));
+    };
+    SunburstDisk.prototype.render = function () {
+    };
+    return SunburstDisk;
+}(Component));
 
-  this.dragged = function (d) {
-    d.fx = d3$1.event.x;
-    d.fy = d3$1.event.y;
-  };
-
-  this.dragended = function (d) {
-    if (!d3$1.event.active) { this$1.simulation.alphaTarget(0); }
-    d.fx = null;
-    d.fy = null;
-  };
-
-};
-
-Nodeset.prototype.update = function update (svg, config, data) {
-    var this$1 = this;
-
-  data = simple2Linked(data);
-
-  var link = svg.append("g")
-    .attr("class", "links")
-    .selectAll("line")
-    .data(data.links)
-    .enter().append("line")
-    .attr("stroke-width", 2)
-    .attr("stroke", "#999")
-    .attr("stroke-opacity", 0.6);
-
-  var node = svg.append("g")
-    .attr("class", "nodes")
-    .selectAll("circle")
-    .data(data.nodes)
-    .enter()
-    .append("circle")
-    .attr("r", 5)
-    .attr("fill", function (d) { return "#23436f"; })
-    .call(d3$1.drag()
-      .on("start", this.dragstarted)
-      .on("drag", this.dragged)
-      .on("end", this.dragended));
-
-  node.append("title")
-    .text(function (d) { return d.id; });
-
-  this.simulation.nodes(data.nodes).on("tick", function (e) { return this$1.ticked(link, node); });
-
-  this.simulation.force("link").links(data.links);
-};
-
-Nodeset.prototype.ticked = function ticked (link, node) {
-  link
-    .attr("x1", function (d) { return d.source.x; })
-    .attr("y1", function (d) { return d.source.y; })
-    .attr("x2", function (d) { return d.target.x; })
-    .attr("y2", function (d) { return d.target.y; });
-
-  node
-    .attr("cx", function (d) { return d.x; })
-    .attr("cy", function (d) { return d.y; });
-};
-
-Nodeset.prototype.render = function render (svg, config) {
-  //Do nothing, since lines render only when new data is received.
-};
-
-var SvgNetworkgraphStrategy = function SvgNetworkgraphStrategy(context) {
-  this._loadConfig(context.config);
-
-  this.svgContainer = new SvgContainer(this.config);
-
-  this.nodeset = new Nodeset(this.config);
-
-  //Include components in the chart container
-  this.svgContainer
-    .add(this.nodeset);
-};
-
-	/**
-	 * Renders a linechart based on data object
-	 * @param{Object} data Data Object. Contains an array with x and y properties.
-	 * 
-	 */
-SvgNetworkgraphStrategy.prototype.draw = function draw (data) {
-  var svg = this.svgContainer.svg,
-    config = this.config;
-
-  this.nodeset.update(svg, config, data);
-};
-
-/**
- * This method adds config options to the chart context.
- * @param{Object} config Config object
- */
-SvgNetworkgraphStrategy.prototype._loadConfig = function _loadConfig (config) {
-  this.config = {};
-  this.config.selector = config.selector || defaults$6.selector;
-  //Margins 
-  this.config.marginTop = config.marginTop || defaults$6.marginTop;
-  this.config.marginLeft = config.marginLeft || defaults$6.marginLeft;
-  this.config.marginRight = config.marginRight || defaults$6.marginRight;
-  this.config.marginBottom = config.marginBottom || defaults$6.marginBottom;
-  this.config.width = config.width ? calculateWidth(config.width, this.config.selector) - this.config.marginLeft - this.config.marginRight
-    : calculateWidth(defaults$6.width, this.config.selector) - this.config.marginLeft - this.config.marginRight;
-  this.config.height = config.height || defaults$6.height;
-
-  return this;
-};
+var SvgStrategySunburst = (function (_super) {
+    __extends(SvgStrategySunburst, _super);
+    function SvgStrategySunburst() {
+        var _this = _super.call(this) || this;
+        _this.axes = new RadialAxes();
+        _this.disk = new SunburstDisk(_this.axes.x, _this.axes.y);
+        _this.textIndicator = new TextIndicator();
+        return _this;
+    }
+    SvgStrategySunburst.prototype.draw = function (data) {
+        this.container.translate(this.config.get('width') / 2, this.config.get('height') / 2);
+        this.container.updateComponents(data);
+    };
+    SvgStrategySunburst.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        this.container
+            .add(this.axes)
+            .add(this.disk)
+            .add(this.textIndicator);
+    };
+    return SvgStrategySunburst;
+}(SvgChart));
 
 var defaults$7 = {
     selector: '#chart',
@@ -3060,620 +2043,366 @@ var defaults$7 = {
     marginRight: 20,
     marginBottom: 30,
     marginLeft: 50,
-    width: '50%', // %, auto, or numeric
+    width: '50%',
     height: 450,
     tickLabel: '',
     transitionDuration: 300,
-    maxNumberOfElements: 5, // used by keepDrawing to reduce the number of elements in the current chart
+    maxNumberOfElements: 5,
     sortData: {
         descending: false,
         prop: 'x'
     },
-    //Events
-    onDown: function onDown(d) {
+    onDown: function (d) {
     },
-    onHover: function onHover(d) {
+    onHover: function (d) {
     },
-    onLeave: function onLeave(d) {
+    onLeave: function (d) {
     },
-    onClick: function onClick(d) {
+    onClick: function (d) {
+    },
+    onUp: function (d) {
     }
 };
 
-var XRadialAxis = function XRadialAxis(config) {
-  if (config === null) {
-    throw new Error('No chart context specified for XRadialAxis');
-  }
-
-  this.xRadialAxis = d3$1.scaleLinear().range([0, 2 * Math.PI]);
-};
-
-var YRadialAxis = function YRadialAxis(config) {
-  if (config === null) {
-    throw new Error('No chart context specified for XRadialAxis');
-  }
-
-  var radius = (Math.min(config.width, config.height) / 2) - 10;
-
-  this.yRadialAxis = d3$1.scaleSqrt()
-    .range([0, radius]);
-};
-
-//
-var RadialAxes = function RadialAxes(config) {
-  if (config === null) {
-    throw new Error('No chart context specified for RadialAxis');
-  }
-
-  this.x = new XRadialAxis(config);
-  this.y = new YRadialAxis(config);
-};
-
-var SunburstDisk = function SunburstDisk(xRadialAxis, yRadialAxis) {
-  var this$1 = this;
-
-  this.x = xRadialAxis;
-  this.y = yRadialAxis;
-  this.arcGen = d3$1.arc()
-    .startAngle(function (d) { return Math.max(0, Math.min(2 * Math.PI, this$1.x(d.x0))); })
-    .endAngle(function (d) { return Math.max(0, Math.min(2 * Math.PI, this$1.x(d.x1))); })
-    .innerRadius(function (d) { return Math.max(0, this$1.y(d.y0)); })
-    .outerRadius(function (d) { return Math.max(0, this$1.y(d.y1)); });
-};
-
-SunburstDisk.prototype.update = function update (svg, config, data) {
-    var this$1 = this;
-
-
-  // Remove all the paths before redrawing
-  this._removePaths(svg);
-
-  // Create layout partition
-  var root = d3$1.stratify()
-    .id(function (d) { return d.id; })
-    .parentId(function (d) { return d.parent; })
-    (data);
-
-  root.sum(function (d) { return d.value; });
-  d3$1.partition()(root);
-
-  // Draw the paths (arcs)
-  var paths = svg.selectAll('path')
-    .data(root.descendants())
-    .enter().append('path')
-    .attr('d', this.arcGen)
-    .style('fill', function (d) {
-      if (!d.parent) {
-        return 'white';
-      } else {
-        return config.colorScale(d.data.label);
-      }
-    })
-    .style('stroke', '#fff')
-    .style('stroke-width', '2')
-    .style('shape-rendering', 'crispEdge');
-
-    paths // TODO extract events to config?
-      .on('mouseover.default', function (d) {
-        var ancestors = this$1._getAncestors(d);
-        // Fade all the arcs
-        if (ancestors.length > 0) {
-          svg.selectAll('path')
-              .style('opacity', 0.3);
+var Sunburst = (function (_super) {
+    __extends(Sunburst, _super);
+    function Sunburst(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategySunburst(), data, userConfig, defaults$7) || this;
+    }
+    Sunburst.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            if (this.data) {
+                this.data = this.data.concat(datum);
+            }
+            else {
+                this.data = datum;
+            }
         }
-        svg.selectAll('path')
-          .filter(function (node) { return ancestors.indexOf(node) >= 0; })
-          .style('opacity', 1);
-        // Hightlight the hovered arc
-          svg.select('.text-indicator .label').text(d.data.label);
-          svg.select('.text-indicator .value').text(d.value);
-      })
-      .on('mouseout.default', function (d) {
-        svg.selectAll('path').style('opacity', 1);
-        svg.select('.text-indicator .label').style('font-weight', 'normal');
-        svg.select('.text-indicator .label').text('');
-        svg.select('.text-indicator .value').text('');
-      })
-    ;
+        else {
+            this.data.push(datum);
+        }
+        this.draw(copy(this.data));
+    };
+    return Sunburst;
+}(Chart));
 
-  paths
-    .on('mousedown.user', config.onDown)
-    .on('mouseup.user', config.onUp)
-    .on('mouseleave.user', config.onLeave)
-    .on('mouseover.user', config.onHover)
-    .on('click.user', config.onClick);
+var LinkedNodeset = (function (_super) {
+    __extends(LinkedNodeset, _super);
+    function LinkedNodeset() {
+        var _this = _super.call(this) || this;
+        _this.toggle = 0;
+        return _this;
+    }
+    LinkedNodeset.prototype.render = function () {
+        var _this = this;
+        var width = this.config.get('width'), height = this.config.get('height');
+        this.simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(function (d) { return d.id; }).distance(50))
+            .force("charge", d3.forceManyBody())
+            .force("center", d3.forceCenter(width / 2, height / 2));
+        this.dragstarted = function (d) {
+            if (!d3.event.active)
+                _this.simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        };
+        this.dragged = function (d) {
+            d.fx = d3.event['x'];
+            d.fy = d3.event['y'];
+        };
+        this.dragended = function (d) {
+            if (!d3.event.active)
+                _this.simulation.alphaTarget(1);
+            d.fx = null;
+            d.fy = null;
+        };
+    };
+    LinkedNodeset.prototype.update = function (data) {
+        var _this = this;
+        var nodeRadius = this.config.get('nodeRadius'), colorScale = this.config.get('colorScale'), linkWeight = this.config.get('linkWeight'), nodeWeight = this.config.get('nodeWeight'), minLinkWeight = this.config.get('minLinkWeight'), maxLinkWeight = this.config.get('maxLinkWeight'), minNodeWeight = this.config.get('minNodeWeight'), maxNodeWeight = this.config.get('maxNodeWeight'), weighted = this.config.get('weighted'), linkScaleRadius = d3.scaleLinear().domain([minLinkWeight, maxLinkWeight]).range([0, 3]), nodeScaleRadius = d3.scaleLinear().domain([minNodeWeight, maxNodeWeight]).range([0, 15]), labelShow = this.config.get('labelShow'), labelField = this.config.get('labelField'), node = null, link = null, text = null;
+        data = simple2Linked(data);
+        this.svg.selectAll('g.links').remove();
+        this.svg.selectAll('g.nodes').remove();
+        this.svg.selectAll('g.labels').remove();
+        link = this.svg.append('g')
+            .attr('class', 'serie')
+            .append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(data.links)
+            .enter()
+            .append("line")
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { console.log(d); return d.key; })
+            .attr("stroke-width", function (d) { return (weighted && d.weight) ? linkScaleRadius(d.weight) : linkWeight; })
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 1);
+        node = this.svg.select('g.serie').append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(data.nodes)
+            .enter()
+            .append("circle")
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d.key; })
+            .attr("r", function (d) { return (weighted && d.weight) ? nodeScaleRadius(d.weight) : nodeWeight; })
+            .attr("fill", function (d) { return colorScale(d.key); })
+            .attr("stroke", "white")
+            .call(d3.drag()
+            .on("start", this.dragstarted)
+            .on("drag", this.dragged)
+            .on("end", this.dragended));
+        var chart = this;
+        node
+            .on('mousedown.user', this.config.get('onDown'))
+            .on('mouseup.user', this.config.get('onUp'))
+            .on('mouseleave.user', this.config.get('onLeave'))
+            .on('mouseover.user', this.config.get('onHover'))
+            .on('click.user', this.config.get('onClick'));
+        if (labelShow) {
+            text = this.svg.select('g.serie').append("g")
+                .attr("class", "labels")
+                .selectAll('text')
+                .data(data.nodes)
+                .enter()
+                .append('text')
+                .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d.key; })
+                .attr('dx', 10)
+                .attr('dy', '.35em')
+                .attr('font-size', '.85em')
+                .text(typeof labelField === 'string' ? function (d) { return d[labelField]; } : labelField)
+                .on('mousedown.user', this.config.get('onDown'))
+                .on('mouseup.user', this.config.get('onUp'))
+                .on('mouseleave.user', this.config.get('onLeave'))
+                .on('mouseover.user', this.config.get('onHover'))
+                .on('click.user', this.config.get('onClick'));
+        }
+        this.simulation.nodes(data.nodes).on("tick", function () { return labelShow ? _this.tickedWithText(link, node, text) : _this.ticked(link, node); });
+        this.simulation.force("link").links(data.links);
+    };
+    LinkedNodeset.prototype.tickedWithText = function (link, node, text) {
+        this.ticked(link, node);
+        text
+            .attr('x', function (d) { return d.x; })
+            .attr('y', function (d) { return d.y; });
+    };
+    LinkedNodeset.prototype.ticked = function (link, node) {
+        link
+            .attr("x1", function (d) { return d.source.x; })
+            .attr("y1", function (d) { return d.source.y; })
+            .attr("x2", function (d) { return d.target.x; })
+            .attr("y2", function (d) { return d.target.y; });
+        node
+            .attr("cx", function (d) { return d.x; })
+            .attr("cy", function (d) { return d.y; });
+    };
+    LinkedNodeset.prototype.zoom = function (event$$1) {
+        var transform = event$$1.transform;
+        this.svg.selectAll('.nodes circle').attr('transform', transform);
+        this.svg.selectAll('.links line').attr('transform', transform);
+        this.svg.selectAll('.labels text').attr('transform', transform);
+    };
+    return LinkedNodeset;
+}(Component));
 
-  // ???
-  svg.select(self.frameElement).style('height', this.height + 'px');
-};
+var ZoomComponent = (function (_super) {
+    __extends(ZoomComponent, _super);
+    function ZoomComponent(zoomerComponent) {
+        var _this = _super.call(this) || this;
+        _this.zoomerComponent = zoomerComponent;
+        _this.zoom = d3.zoom().scaleExtent([1 / 2, 4]);
+        return _this;
+    }
+    ZoomComponent.prototype.render = function () {
+        var _this = this;
+        var selector = this.config.get('selector');
+        d3.select(selector).call(this.zoom);
+        this.zoom.on('zoom', function () {
+            _this.zoomerComponent.zoom(d3.event);
+        });
+    };
+    ZoomComponent.prototype.update = function (data) {
+    };
+    return ZoomComponent;
+}(Component));
 
-/**
- * Removes all the paths (arcs). Doing this before each redraw prevents the
- * transition to mess up the arcs.
- * @private
- */
-SunburstDisk.prototype._removePaths = function _removePaths (svg) {
-  svg.selectAll('path').remove();
-};
-
-/**
- * From: http://bl.ocks.org/kerryrodden/7090426
- * @param node
- * @returns {Array}
- * @private
- */
-SunburstDisk.prototype._getAncestors = function _getAncestors (node) {
-  var path = [];
-  var current = node;
-  while (current.parent) {
-    path.unshift(current);
-    current = current.parent;
-  }
-  return path;
-};
-
-SunburstDisk.prototype.render = function render (svg, config) {
-  //Do nothing, since disk render only when new data is received.
-};
-
-var SvgSunburstStrategy = function SvgSunburstStrategy(context) {
-  this._loadConfig(context.config);
-
-  this.svgContainer = new SvgContainer(this.config);
-  var config =
-    this.config,
-    translation = 'translate(' + config.width / 2 + ',' + (config.height / 2) + ')';
-
-  this.svgContainer.transform(translation);
-
-  this.axes = new RadialAxes(config);
-
-  this.disk = new SunburstDisk(
-    this.axes.x.xRadialAxis,
-    this.axes.y.yRadialAxis,
-    config
-  );
-
-  this.textIndicator = new TextIndicator(config);
-
-  this.svgContainer
-    .add(this.disk)
-    .add(this.textIndicator);
-};
-
-SvgSunburstStrategy.prototype.draw = function draw (data) {
-  var svg = this.svgContainer.svg,
-    config = this.config;
-
-  this.disk.update(svg, config, data);
-};
-
-/**
- * This method adds config options to the chart context.
- * @param{Object} config Config object
- */
-SvgSunburstStrategy.prototype._loadConfig = function _loadConfig (config) {
-  this.config = {};
-  //Selector
-  this.config.selector = config.selector || defaults$7.selector;
-  //Margins 
-  this.config.marginTop = config.marginTop || defaults$7.marginTop;
-  this.config.marginLeft = config.marginLeft || defaults$7.marginLeft;
-  this.config.marginRight = config.marginRight || defaults$7.marginRight;
-  this.config.marginBottom = config.marginBottom || defaults$7.marginBottom;
-  //Width & height
-  this.config.width = config.width ?
-    calculateWidth(config.width, this.config.selector) - this.config.marginLeft - this.config.marginRight
-    : calculateWidth(defaults$7.width, this.config.selector) - this.config.marginLeft - this.config.marginRight;
-  this.config.height = config.height || defaults$7.height;
-    
-  this.config.colorScale = config.colorScale || defaults$7.colorScale;
-
-  //Events
-  this.config.onDown = config.onDown || defaults$7.onDown;
-  this.config.onUp = config.onUp || defaults$7.onUp;
-  this.config.onHover = config.onHover || defaults$7.onHover;
-  this.config.onClick = config.onClick || defaults$7.onClick;
-  this.config.onLeave = config.onLeave || defaults$7.onLeave;
-
-  return this;
-};
+var SvgStrategyNetwork = (function (_super) {
+    __extends(SvgStrategyNetwork, _super);
+    function SvgStrategyNetwork() {
+        return _super.call(this) || this;
+    }
+    SvgStrategyNetwork.prototype.draw = function (data) {
+        this.container.updateComponents(data);
+    };
+    SvgStrategyNetwork.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        var legend = this.config.get('legend');
+        var zoom$$1 = this.config.get('zoom');
+        this.linkedNodes = new LinkedNodeset();
+        this.container.add(this.linkedNodes);
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+        if (zoom$$1) {
+            this.zoom = new ZoomComponent(this.linkedNodes);
+            this.container.add(this.zoom);
+        }
+    };
+    return SvgStrategyNetwork;
+}(SvgChart));
 
 var defaults$8 = {
     selector: '#chart',
     colorScale: category7(),
-
-    //Axes
-    xAxisType: 'linear',
-    xAxisFormat: '.1f',
-    xAxisLabel: 'Sepal length (cm)',
-    yAxisType: 'linear',
-    yAxisFormat: '.1f',
-    yAxisLabel: 'Sepal width (cm)',
-    //margins
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
     marginLeft: 150,
-    //markers
-    markerShape: 'dot',
-    markerSize: 3,
-    //Width & height
-    width: '100%', // %, auto, or numeric
+    width: '100%',
     height: 250,
-    //Events
-    onDown: function onDown(d) {
+    nodeRadius: 8.5,
+    legend: true,
+    linkWeight: 1,
+    nodeWeight: 8,
+    minLinkValue: 0,
+    maxLinkValue: 10,
+    minNodeWeight: 0,
+    maxNodeWeight: 100,
+    weighted: false,
+    labelShow: true,
+    labelField: 'id',
+    zoom: true,
+    onDown: function (d) {
     },
-    onHover: function onHover(d) {
+    onHover: function (d) {
     },
-    onLeave: function onLeave(d) {
+    onLeave: function (d) {
     },
-    onClick: function onClick(d) {
+    onClick: function (d) {
     },
-
-    maxNumberOfElements: 100, // used by keepDrawing method to reduce the number of elements in the current chart
+    onUp: function (d) {
+    }
 };
 
-var SvgScatterplotStrategy = (function (SvgAxis$$1) {
-  function SvgScatterplotStrategy(context) {
-    SvgAxis$$1.call(this, context);
-    this.axes = new XYAxes(this.config.xAxisType, 'linear', this.config);
-    this.points = new Pointset(this.axes.x, this.axes.y);
-    this.legend = new Legend();
-    //Include components in the chart container
-    this.svgContainer
-      .add(this.axes)
-      .add(this.legend)
-      .add(this.points);
-  }
-
-  if ( SvgAxis$$1 ) SvgScatterplotStrategy.__proto__ = SvgAxis$$1;
-  SvgScatterplotStrategy.prototype = Object.create( SvgAxis$$1 && SvgAxis$$1.prototype );
-  SvgScatterplotStrategy.prototype.constructor = SvgScatterplotStrategy;
-
-	/**
-	 * Renders a scatterplot based on data object
-	 * @param  {Object} data Data Object. Contains an array with x and y properties.
-	 * 
-	 */
-  SvgScatterplotStrategy.prototype.draw = function draw (data) {
-    var svg = this.svgContainer.svg,
-      config = this.config,
-      needRescaling = this.config.needRescaling,
-      bbox = null;
-
-    // //Transform data, if needed
-    convertByXYFormat(data, config);
-
-    //Sort data
-    sortByField(data, 'x');
-
-    //rescale, if needed.
-    if (needRescaling) {
-      this.rescale();
+var Network = (function (_super) {
+    __extends(Network, _super);
+    function Network(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyNetwork(), data, userConfig, defaults$8) || this;
     }
-
-    bbox = this._getDomainBBox(data);
-
-    this.axes.updateDomainByBBox(bbox);
-
-    //Create a transition effect for dial rescaling
-    this.axes.transition(svg, 200);
-
-    // Update legend
-    this.legend.update(svg, config, data);
-
-    // Update points
-    this.points.update(svg, config, data);
-  };
-
-  SvgScatterplotStrategy.prototype._getDomainBBox = function _getDomainBBox (data) {
-    var minX = d3$1.min(data, function (d) { return d.x; }),
-      maxX = d3$1.max(data, function (d) { return d.x; }),
-      minY = d3$1.min(data, function (d) { return d.y; }),
-      maxY = d3$1.max(data, function (d) { return d.y; });
-    return [minX, maxX, minY, maxY];
-  };
-
-  SvgScatterplotStrategy.prototype._checkMarkers = function _checkMarkers (config) {
-    return config.markerSize > 0;
-  };
-  SvgScatterplotStrategy.prototype._checkArea = function _checkArea (config) {
-    return config.areaOpacity > 0;
-  };
-
-  /**
-   * This method adds config options to the chart context.
-   * @param  {Object} config Config object
-   */
-  SvgScatterplotStrategy.prototype._loadConfig = function _loadConfig (config) {
-    SvgAxis$$1.prototype._loadConfig.call(this, config, defaults$8);
-    //Markers
-    this.config.markerOutlineWidth = config.markerOutlineWidth || defaults$8.markerOutlineWidth;
-    this.config.markerShape = config.markerShape || defaults$8.markerShape;
-    this.config.markerSize = (typeof config.markerSize === 'undefined' || config.markerSize < 0) ? defaults$8.markerSize : config.markerSize;
-    //Area
-    this.config.areaOpacity = (typeof config.areaOpacity === 'undefined' || config.markerSize < 0) ? defaults$8.areaOpacity : config.areaOpacity;
-    return this;
-  };
-
-  return SvgScatterplotStrategy;
-}(SvgAxis));
-
-/**
- * SvgStrategy wrapper class
- */
-var SvgStrategy = function SvgStrategy(strategy) {
-      this.strategy = strategy;
-  };
-  SvgStrategy.prototype.draw = function draw (data) {
-      this.strategy.draw(data);
-  };
-  SvgStrategy.prototype.on = function on (events){
-      this.strategy.on(events);
-  };
-
-var strategies = {
-  Barchart: function Barchart(chartContext) {
-    return new SvgBarchartStrategy(chartContext);
-  },
-  Linechart: function Linechart(chartContext) {
-    return new SvgLinechartStrategy(chartContext);
-  },
-  Streamgraph: function Streamgraph(chartContext) {
-    return new SvgStreamgraphStrategy(chartContext);
-  },
-  Gauge: function Gauge(chartContext) {
-    return new SvgGaugeStrategy(chartContext);
-  },
-  Scatterplot: function Scatterplot(chartContext) {
-    return new SvgScatterplotStrategy(chartContext);
-  },
-  Sunburst: function Sunburst(chartContext) {
-    return new SvgSunburstStrategy(chartContext);
-  },
-  Swimlane: function Swimlane(chartContext) {
-    return new SvgSwimlaneStrategy(chartContext);
-  },
-  StackedArea: function StackedArea(chartContext) {
-    return new SvgStackedAreaStrategy(chartContext);
-  },
-  Networkgraph: function Networkgraph(chartContext) {
-    return new SvgNetworkgraphStrategy(chartContext);
-  }
-};
-
-var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
-
-function isExternal(url) {
-  return url && url.lastIndexOf('http', 0) === 0 && url.lastIndexOf(window.location.host) === -1;
-}
-
-function inlineImages(el, callback) {
-  var images = el.querySelectorAll('image');
-  var left = images.length;
-  if (left === 0) {
-    callback();
-  }
-  for (var i = 0; i < images.length; i++) {
-    (function (image) {
-      var href = image.getAttribute('xlink:href');
-      if (href) {
-        if (isExternal(href.value)) {
-          window.console.warn('Cannot render embedded images linking to external hosts: ' + href.value);
-          return;
+    Network.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            this.data = this.data.concat(datum);
         }
-      }
-      var canvas = window.document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
-      var img = new window.Image();
-      href = href || image.getAttribute('href');
-      img.src = href;
-      img.onload = function () {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        image.setAttribute('xlink:href', canvas.toDataURL('image/png'));
-        left--;
-        if (left === 0) {
-          callback();
+        else {
+            this.data.push(datum);
         }
-      };
-      img.onerror = function () {
-        window.console.error('Could not load ' + href);
-        left--;
-        if (left === 0) {
-          callback();
-        }
-      };
-    })(images[i]);
-  }
-}
-
-function styles(el, selectorRemap) {
-  var css = '';
-  var sheets = document.styleSheets;
-  for (var i = 0; i < sheets.length; i++) {
-    if (isExternal(sheets[i].href)) {
-      window.console.warn('Cannot include styles from other hosts: ' + sheets[i].href);
-      continue;
-    }
-    var rules = sheets[i].cssRules;
-    if (rules !== null) {
-      for (var j = 0; j < rules.length; j++) {
-        var rule = rules[j];
-        if (typeof (rule.style) !== 'undefined') {
-          var match = null;
-          try {
-            match = el.querySelector(rule.selectorText);
-          } catch (err) {
-            window.console.warn('Invalid CSS selector "' + rule.selectorText + '"', err);
-          }
-          if (match) {
-            var selector = selectorRemap ? selectorRemap(rule.selectorText) : rule.selectorText;
-            css += selector + ' { ' + rule.style.cssText + ' }\n';
-          } else if (rule.cssText.match(/^@font-face/)) {
-            css += rule.cssText + '\n';
-          }
-        }
-      }
-    }
-  }
-  return css;
-}
-
-function svgAsDataUri(el, options, cb) {
-  options = options || {};
-  options.scale = options.scale || 1;
-  var xmlns = 'http://www.w3.org/2000/xmlns/';
-
-  inlineImages(el, function () {
-    var outer = document.createElement('div');
-    var clone = el.cloneNode(true);
-    var width, height;
-    if (el.tagName === 'svg') {
-      width = parseInt(clone.getAttribute('width') || clone.style.width || getComputedStyle(el).getPropertyValue('width'));
-      height = parseInt(clone.getAttribute('height') || clone.style.height || getComputedStyle(el).getPropertyValue('height'));
-    } else {
-      var box = el.getBBox();
-      width = box.x + box.width;
-      height = box.y + box.height;
-      clone.setAttribute('transform', clone.getAttribute('transform').replace(/translate\(.*?\)/, ''));
-
-      var svg$1 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg$1.appendChild(clone);
-      clone = svg$1;
-    }
-
-    clone.setAttribute('version', '1.1');
-    clone.setAttributeNS(xmlns, 'xmlns', 'http://www.w3.org/2000/svg');
-    clone.setAttributeNS(xmlns, 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
-    clone.setAttribute('width', width * options.scale);
-    clone.setAttribute('height', height * options.scale);
-    clone.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
-    outer.appendChild(clone);
-
-    var css = styles(el, options.selectorRemap);
-    var s = document.createElement('style');
-    s.setAttribute('type', 'text/css');
-    s.innerHTML = '<![CDATA[\n' + css + '\n]]>';
-    var defs = document.createElement('defs');
-    defs.appendChild(s);
-    clone.insertBefore(defs, clone.firstChild);
-
-    var svg = doctype + outer.innerHTML;
-    var uri = 'data:image/svg+xml;base64,' + window.btoa(window.unescape(encodeURIComponent(svg)));
-    if (cb) {
-      cb(uri);
-    }
-  });
-}
-
-/**
- * Base class, which includes common methods for all the charts
- * @export Chart
- * @class Chart
- */
-var Chart = function Chart(d, config) {
-    var clazz = this.constructor.name;
-    if (clazz === 'Chart') {
-        throw new Error(clazz + ' is non-instanciable');
-    }
-
-    this.events = {};
-
-    if (!d && !config) {
-        throw new Error('Missing constructor parameters');
-    }
-
-    var dataFormat = d.constructor.name;
-    var nArguments = (d && config) ? 2 : 1;
-
-    switch (dataFormat) {
-        case 'WebsocketDatasource':
-        case 'HTTPDatasource':
-            this.datasource = d;
-            this.data = [];
-            this._configureDatasource();
-            break;
-        case 'Array':
-            this.data = d;
-            break;
-        default:
-            throw TypeError('Wrong data format');
-    }
-    //if only 1 parameter is specified, take default config. Else, take the second argument as config.
-    this.config = (nArguments === 1) ? {} : config;
-
-    this._initializeSVGContext();
-};
-
-/**
- * Private method. Initialize the API by dinamically creating methods. It creates N method, one per configuration option
- * 
- * @param {any} properties An array that contains the name of the methods
- * 
- * @memberOf Chart
- */
-Chart.prototype._initializeAPI = function _initializeAPI (properties) {
-    var clazz = this.constructor;
-    properties.forEach(function (method) {
-        clazz.prototype[method] = function (value) {
-            return this.change(method, value);
-        };
-    });
-};
-
-/**
- * Return the chart context: data, configuration and type
- * 
- * @returns chart Chart context
- * 
- * @memberOf Chart
- */
-Chart.prototype._getChartContext = function _getChartContext () {
-    return {
-        data: this.data,
-        config: this.config,
-        cType: this.constructor.name
+        this.draw(copy(this.data));
     };
+    return Network;
+}(Chart));
+
+var SectorSet = (function (_super) {
+    __extends(SectorSet, _super);
+    function SectorSet() {
+        return _super.call(this) || this;
+    }
+    SectorSet.prototype.render = function () {
+    };
+    SectorSet.prototype.update = function (data) {
+        var propertyKey = this.config.get('propertyKey');
+        var propertyX = this.config.get('propertyX');
+        var width = this.config.get('width');
+        var height = this.config.get('height');
+        var radius = Math.min(width, height) / 2;
+        var colorScale = this.config.get('colorScale');
+        var myPie = d3.pie().value(function (d) { return d[propertyX]; })(data);
+        var myArc = d3.arc().innerRadius(0).outerRadius(radius);
+        var arcs = this.svg.selectAll("g.slice").data(myPie);
+        var newBlock = arcs.enter();
+        newBlock
+            .append("g")
+            .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, function (d) { return d.data[propertyKey]; })
+            .append("path")
+            .attr('fill', function (d, i) {
+            return d.data[propertyKey] !== undefined ? colorScale(d.data[propertyKey]) : colorScale(i);
+        })
+            .attr("d", myArc);
+    };
+    return SectorSet;
+}(Component));
+
+var SvgStrategyPieChart = (function (_super) {
+    __extends(SvgStrategyPieChart, _super);
+    function SvgStrategyPieChart() {
+        var _this = _super.call(this) || this;
+        _this.sectors = new SectorSet();
+        return _this;
+    }
+    SvgStrategyPieChart.prototype.draw = function (data) {
+        this.container.translate(this.config.get('width') / 2, this.config.get('height') / 2);
+        this.container.updateComponents(data);
+    };
+    SvgStrategyPieChart.prototype.initialize = function () {
+        _super.prototype.initialize.call(this);
+        this.container
+            .add(this.sectors);
+        var legend = this.config.get('legend');
+        if (legend) {
+            this.legend = new Legend();
+            this.container.add(this.legend);
+        }
+    };
+    return SvgStrategyPieChart;
+}(SvgChart));
+
+var defaults$9 = {
+    selector: '#chart',
+    colorScale: category8(),
+    marginTop: 0,
+    marginRight: '100',
+    marginBottom: 0,
+    marginLeft: 0,
+    width: '500',
+    height: '500',
+    transitionDuration: 300,
+    maxNumberOfElements: 5,
+    legend: true,
+    propertyX: 'x',
+    propertyKey: 'key',
+    sortData: {
+        descending: false,
+        prop: 'x'
+    },
+    onDown: function (d) {
+    },
+    onHover: function (d) {
+    },
+    onLeave: function (d) {
+    },
+    onClick: function (d) {
+    },
+    onUp: function (d) {
+    }
 };
 
-/**
- * Initialize the SVG context, by dinamically creating an <svg> tag in the specified selector. It is automatically invoked
- * by the chart constructor and should not be used outside of this instance.
- * 
- * @memberOf Chart
- */
-Chart.prototype._initializeSVGContext = function _initializeSVGContext () {
-    this._svg = new SvgStrategy(strategies[this.constructor.name](this._getChartContext()));
-};
-
-/**
- * Paint data into the chart. If no data is specified, it takes by default the last dataset (very useful when repaintng charts )
- * 
- * @param {any} data Data to be painted
- * 
- * @memberOf Chart
- */
-Chart.prototype.draw = function draw (data) {
-        if ( data === void 0 ) data = this.data;
-
-    this._svg.draw(data);
-};
-
-/**
- * Make and download an image of the current state of the chart.
- * 
- * @memberOf Chart
- */
-Chart.prototype.download = function download () {
-        var this$1 = this;
-
-    var selector = this._svg.strategy.config.selector + ' ' + 'svg';
-    svgAsDataUri(d3.select(selector).node(), {}, function (uri, err) {
-        if (err) {
-            throw Error('Error converting to image ' + err);
+var PieChart = (function (_super) {
+    __extends(PieChart, _super);
+    function PieChart(data, userConfig) {
+        if (userConfig === void 0) { userConfig = {}; }
+        return _super.call(this, new SvgStrategyPieChart, data, userConfig, defaults$9) || this;
+    }
+    PieChart.prototype.keepDrawing = function (datum) {
+        var datumType = datum.constructor;
+        if (datumType === Array) {
+            if (this.data) {
+                this.data = this.data.concat(datum);
+            }
+            else {
+                this.data = datum;
+            }
         }
         else {
             var link = document.createElement('a');
@@ -3684,561 +2413,142 @@ Chart.prototype.download = function download () {
             link.click();
             document.body.removeChild(link);
         }
-    });
-};
-
-Chart.prototype._keepDrawingByAdding = function _keepDrawingByAdding (datum) {
-    var datumType = datum.constructor;
-
-    if (datumType === Array) {
-        this.data = this.data.concat(datum);
-    }
-    else {
-        this.data.push(datum);
-    }
-    this.draw(JSON.parse(JSON.stringify(this.data)));
-};
-
-
-/**
- * 
- * This method add a data record / array of data into the current data. 
- * @param {any} datum
- * @param {any} method
- * 
- * @memberOf Chart
-    
- */
-Chart.prototype.keepDrawing = function keepDrawing (datum, method) {
-    if (method === 'add') {
-        this._keepDrawingByAdding(datum);
-    }
-    else {
-        this._keepDrawingByReplacing(datum);
-    }
-};
-
-Chart.prototype._configureDatasource = function _configureDatasource () {
-        var this$1 = this;
-
-    this.dispatcher = d3$1.dispatch('onmessage', 'onopen', 'onerror');
-
-    this.datasource.configure(this.dispatcher);
-
-    this.dispatcher.on('onmessage', function (data) { return this$1.keepDrawing(data); });
-    //this.dispatcher.on('onmessage', (data) => console.log(data));
-
-
-    this.dispatcher.on('onopen', function (event$$1) {
-        console.log('onopen', event$$1);
-    });
-
-    this.dispatcher.on('onerror', function (error) {
-        console.log('onerror', error);
-    });
-};
-
-/**
- * Change a configuration property. They all are also available through a method with the same name of the property.
- * 
- * @param {any} property property name
- * @param {any} value the new property value
- * @returns the instance of the current chart
- * 
- * @memberOf Chart
- */
-Chart.prototype.change = function change (property, value) {
-    this._svg.strategy.changeConfigProperty(property, value);
-    return this;
-};
-
-/**
- * Linechart implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Linechart$1 = (function (Chart$$1) {
-  function Linechart(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Linechart.__proto__ = Chart$$1;
-  Linechart.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Linechart.prototype.constructor = Linechart;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Linechart.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Linechart.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  return Linechart;
+        this.draw(copy(this.data));
+    };
+    return PieChart;
 }(Chart));
 
-/**
- * Barchart implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Barchart$1 = (function (Chart$$1) {
-  function Barchart(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Barchart.__proto__ = Chart$$1;
-  Barchart.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Barchart.prototype.constructor = Barchart;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data - This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Barchart.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  Barchart.prototype.fire = function fire (event$$1, data) {//TODO: improve this section
-    if (event$$1 === 'transition') {
-      if (data === 'grouped') {
-        this._svg.strategy.transition2Grouped();
-      }
-      else if (data === 'stacked') {
-        this._svg.strategy.transition2Stacked();
-      }
-
-      this._svg.strategy.draw();
+var Datasource = (function () {
+    function Datasource() {
+        this.dispatcher = null;
+        this.source = null;
+        this.isWaitingForData = true;
     }
-  };
+    Datasource.prototype.start = function () {
+        window.console.log('Starting datasource');
+    };
+    Datasource.prototype.stop = function () {
+        window.console.log('Stopping datasource');
+    };
+    Datasource.prototype.configure = function (dispatcher) {
+        this.dispatcher = dispatcher;
+    };
+    Datasource.prototype.filter = function (filter) {
+        return this;
+    };
+    return Datasource;
+}());
 
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum - data to be rendered
-   */
-  Barchart.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'replace');
-  };
-  
-  Barchart.prototype._keepDrawingByReplacing = function _keepDrawingByReplacing (datum) {
-    var this$1 = this;
-
-    var datumType = datum.constructor;
-    if (datumType === Array) {
-      this.data = datum;
+var WebsocketDatasource = (function (_super) {
+    __extends(WebsocketDatasource, _super);
+    function WebsocketDatasource(source) {
+        var _this = _super.call(this) || this;
+        _this.source = source;
+        return _this;
     }
-    else {
-      for (var i = 0; i < this.data.length; i++) {
-        var d = this$1.data[i];
-        if (d.x === datum.x) {
-          this$1.data[i] = datum;
-          break;
-        }
-      }
-    }
-
-    this.draw(JSON.parse(JSON.stringify(this.data)));
-  };
-
-  return Barchart;
-}(Chart));
-
-/**
- * Streamgraph implementation. This charts belongs to 'Flow' family.
- * It is inherited on 'Flow'.
- */
-var Streamgraph$1 = (function (Chart$$1) {
-  function Streamgraph(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults$2);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Streamgraph.__proto__ = Chart$$1;
-  Streamgraph.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Streamgraph.prototype.constructor = Streamgraph;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Streamgraph.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Streamgraph.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  return Streamgraph;
-}(Chart));
-
-/**
- * StackedArea implementation. This charts belongs to 'Flow' family.
- * It is inherited on 'Flow'.
- */
-var StackedArea$1 = (function (Chart$$1) {
-  function StackedArea(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults$3);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) StackedArea.__proto__ = Chart$$1;
-  StackedArea.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  StackedArea.prototype.constructor = StackedArea;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  StackedArea.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  StackedArea.prototype.keepDrawing = function keepDrawing (datum) {
-    if (!this.datum) {
-      this.datum = [];
-    }
-    this.datum = this.datum.concat(datum);
-    Chart$$1.prototype.draw.call(this, this.datum);
-  };
-
-  return StackedArea;
-}(Chart));
-
-/**
- * Linechart implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Swimlane$1 = (function (Chart$$1) {
-  function Swimlane(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults$4);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Swimlane.__proto__ = Chart$$1;
-  Swimlane.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Swimlane.prototype.constructor = Swimlane;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Swimlane.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Swimlane.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  return Swimlane;
-}(Chart));
-
-/**
- * Gauge implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Gauge$1 = (function (Chart$$1) {
-  function Gauge(data, config) {
-    Chart$$1.call(this, data, config);
-  }
-
-  if ( Chart$$1 ) Gauge.__proto__ = Chart$$1;
-  Gauge.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Gauge.prototype.constructor = Gauge;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Gauge.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Gauge.prototype.keepDrawing = function keepDrawing (datum) {
-    this.data = [datum[0]];
-    Chart$$1.prototype.draw.call(this);
-  };
-
-  return Gauge;
-}(Chart));
-
-/**
- * Scatterplot implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Scatterplot$1 = (function (Chart$$1) {
-  function Scatterplot(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults$8);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Scatterplot.__proto__ = Chart$$1;
-  Scatterplot.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Scatterplot.prototype.constructor = Scatterplot;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Scatterplot.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Scatterplot.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  return Scatterplot;
-}(Chart));
-
-/**
- * Sunburst implementation. This charts belongs to 'Hierarchical' family.
- */
-var Sunburst$1 = (function (Chart$$1) {
-  function Sunburst(data, config) {
-    Chart$$1.call(this, data, config);
-  }
-
-  if ( Chart$$1 ) Sunburst.__proto__ = Chart$$1;
-  Sunburst.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Sunburst.prototype.constructor = Sunburst;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Sunburst.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Sunburst.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  // /**
-  //  * Add new data to the current graph. If it is empty, this creates a new one.
-  //  * @param  {Object} datum data to be rendered
-  //  */
-  // keepDrawing(datum) {
-  //   if (this.data.constructor === Array) { this.data = {}; }
-  //   let config = this.config;
-  //   if (!datum) {
-  //     console.warn('attemp to draw null datum');
-  //     return;
-  //   }
-  //
-  //   this._buildTree(datum[datum.length - 1].path, datum[datum.length - 1].value, this.data);
-  //
-  //   this.draw();
-  //
-  //   return this.data;
-  // }
-
-  /**
-   * Inserts the new nodes into the existing tree.
-   * From: http://bl.ocks.org/kerryrodden/7090426
-   *
-   * @param pathString
-   * @param value
-   * @param data
-   * @private
-   */
-  Sunburst.prototype._buildTree = function _buildTree (pathString, value, data) {
-    var path = pathString.split('/');
-    var current = data;
-    for (var i = 1; i < path.length; i++) {
-      var children = current.children;
-      var name = path[i];
-      var child;
-      if (i + 1 < path.length) {
-        var foundChild = false;
-        for (var j = 0; children !== undefined && j < children.length; j++) {
-          if (children[j].name === name) {
-            child = children[j];
-            foundChild = true;
-            break;
-          }
-        }
-        if (!foundChild) {
-          child = {
-            'name': name,
-            'children': []
-          };
-          if (children === undefined) {
-            current.children = [];
-          }
-          delete current.value;
-          current.children.push(child);
-        }
-        current = child;
-      } else {
-        child = {
-          'name': name,
-          'value': value
+    WebsocketDatasource.prototype.configure = function (dispatcher) {
+        this.dispatcher = dispatcher;
+    };
+    WebsocketDatasource.prototype.start = function () {
+        var _this = this;
+        _super.prototype.start.call(this);
+        this.ws = new WebSocket(this.source['endpoint']);
+        this.dispatcher.call('addLoading', this, {});
+        this.ws.onopen = function (e) {
+            _this.dispatcher.call('onopen', _this, e);
         };
-        if (children === undefined) {
-          current.children = [];
+        this.ws.onerror = function (e) {
+            throw new Error('An error occurred trying to reach the websocket server' + e);
+        };
+        this.ws.onmessage = function (e) {
+            if (_this.isWaitingForData) {
+                _this.dispatcher.call('removeLoading', _this, e);
+                _this.isWaitingForData = false;
+            }
+            var data = JSON.parse(e.data);
+            _this.dispatcher.call('onmessage', _this, data);
+        };
+    };
+    WebsocketDatasource.prototype.stop = function () {
+        _super.prototype.stop.call(this);
+        if (this.ws) {
+            this.ws.close();
         }
-        delete current.value;
-        current.children.push(child);
-      }
+    };
+    return WebsocketDatasource;
+}(Datasource));
+
+var HTTPDatasource = (function (_super) {
+    __extends(HTTPDatasource, _super);
+    function HTTPDatasource(source) {
+        var _this = _super.call(this) || this;
+        _this.source = source;
+        _this.intervalId = -1;
+        _this.started = false;
+        return _this;
     }
-  };
+    HTTPDatasource.prototype.start = function () {
+        if (!this.started) {
+            _super.prototype.start.call(this);
+            var pollingTime = this.source.pollingTime;
+            var url = this.source.url;
+            this._startPolling(url, pollingTime);
+            this.started = true;
+        }
+    };
+    HTTPDatasource.prototype._startPolling = function (url, time) {
+        var _this = this;
+        if (time === void 0) { time = 1000; }
+        var interval = window.setInterval;
+        this.intervalId = interval(function () { return _this._startRequest(url); }, time);
+    };
+    HTTPDatasource.prototype._startRequest = function (url) {
+        var _this = this;
+        window.console.log('url', url);
+        d3.request(url).get(function (e, response) { return _this._handleResponse(response); });
+    };
+    HTTPDatasource.prototype._stopPolling = function () {
+        var clearInterval = window.clearInterval;
+        clearInterval(this.intervalId);
+    };
+    HTTPDatasource.prototype._handleResponse = function (xmlHttpRequest) {
+        var parseJson = window.JSON.parse;
+        if (xmlHttpRequest.readyState === 4 && xmlHttpRequest.status === 200) {
+            var response = parseJson(xmlHttpRequest.response);
+            this._handleOK(response);
+        }
+        else {
+            this._handleError(xmlHttpRequest);
+        }
+    };
+    HTTPDatasource.prototype._handleOK = function (data) {
+        if (this.properties.length > 0) {
+            data = this.convert(data);
+        }
+        this.dispatcher.call('onmessage', this, data);
+    };
+    HTTPDatasource.prototype._handleError = function (data) {
+        this.dispatcher.call('onerror', this, data);
+    };
+    HTTPDatasource.prototype.stop = function () {
+        if (this.started) {
+            this._stopPolling();
+            this.started = false;
+        }
+    };
+    return HTTPDatasource;
+}(Datasource));
 
-  return Sunburst;
-}(Chart));
-
-/**
- * Linechart implementation. This charts belongs to 'Basic' family.
- * It is inherited on 'Basic'.
- */
-var Networkgraph$1 = (function (Chart$$1) {
-  function Networkgraph(data, config) {
-    Chart$$1.call(this, data, config);
-    var keys = Object.keys(defaults$6);
-    this._initializeAPI(keys);
-  }
-
-  if ( Chart$$1 ) Networkgraph.__proto__ = Chart$$1;
-  Networkgraph.prototype = Object.create( Chart$$1 && Chart$$1.prototype );
-  Networkgraph.prototype.constructor = Networkgraph;
-
-  /**
-   * Renders a data object on the chart.
-   * @param  {Object} data This object contains the data that will be rendered on chart. If you do not
-   * specify this param, this.data will be used instead.
-   */
-  Networkgraph.prototype.draw = function draw (data) {
-    if ( data === void 0 ) data = this.data;
-
-    Chart$$1.prototype.draw.call(this, data);
-  };
-
-  /**
-   * Add new data to the current graph. If it is empty, this creates a new one.
-   * @param  {Object} datum data to be rendered
-   */
-  Networkgraph.prototype.keepDrawing = function keepDrawing (datum) {
-    Chart$$1.prototype.keepDrawing.call(this, datum, 'add');
-  };
-
-  return Networkgraph;
-}(Chart));
-
-exports.Datasource = Datasource;
-exports.HTTPDatasource = HTTPDatasource;
+exports.Linechart = Linechart;
+exports.Barchart = Barchart;
+exports.Gauge = Gauge;
+exports.Scatterplot = Scatterplot;
+exports.Streamgraph = Streamgraph;
+exports.StackedArea = StackedArea;
+exports.Swimlane = Swimlane;
+exports.Sunburst = Sunburst;
+exports.Network = Network;
+exports.PieChart = PieChart;
 exports.WebsocketDatasource = WebsocketDatasource;
-exports.Linechart = Linechart$1;
-exports.Barchart = Barchart$1;
-exports.Streamgraph = Streamgraph$1;
-exports.StackedArea = StackedArea$1;
-exports.Swimlane = Swimlane$1;
-exports.Gauge = Gauge$1;
-exports.Scatterplot = Scatterplot$1;
-exports.Sunburst = Sunburst$1;
-exports.Networkgraph = Networkgraph$1;
-exports.category1 = category1;
-exports.category2 = category2;
-exports.category3 = category3;
-exports.category4 = category4;
-exports.category5 = category5;
-exports.category6 = category6;
-exports.category7 = category7;
-exports.category8 = category8;
-exports.sequentialYellow = sequentialYellow;
-exports.sequentialRedOrange = sequentialRedOrange;
-exports.sequentialRed = sequentialRed;
-exports.sequentialPink = sequentialPink;
-exports.sequentialPurplePink = sequentialPurplePink;
-exports.sequentialPurple = sequentialPurple;
-exports.sequentialBlue = sequentialBlue;
-exports.sequentialLightBlue = sequentialLightBlue;
-exports.sequentialBlueViolet = sequentialBlueViolet;
-exports.sequentialTurquoise = sequentialTurquoise;
-exports.sequentialLightGreen = sequentialLightGreen;
-exports.sequentialDarkGreen = sequentialDarkGreen;
-exports.sequentialGreenBrown = sequentialGreenBrown;
-exports.sequentialBrown = sequentialBrown;
-exports.sequentialGrey = sequentialGrey;
-exports.sequentialVioletCb = sequentialVioletCb;
-exports.sequentialPinkCb = sequentialPinkCb;
-exports.sequentialBlueCb = sequentialBlueCb;
-exports.sequentialGreenCb = sequentialGreenCb;
-exports.sequentialGreenBrownCb = sequentialGreenBrownCb;
-exports.diverging_spectral1 = diverging_spectral1;
-exports.diverging_spectral2 = diverging_spectral2;
-exports.diverging_spectral3 = diverging_spectral3;
-exports.diverging_brown_turquoise = diverging_brown_turquoise;
-exports.diverging_orange_pink = diverging_orange_pink;
-exports.diverging_red_blue = diverging_red_blue;
-exports.diverging_red_grey = diverging_red_grey;
-exports.diverging_orange_violet = diverging_orange_violet;
-exports.diverging_purple_green = diverging_purple_green;
-exports.diverging_violet_green = diverging_violet_green;
-exports.diverging_red_green = diverging_red_green;
-exports.diverging_brown_green = diverging_brown_green;
-exports.diverging_lightBrown_turquoise = diverging_lightBrown_turquoise;
+exports.HTTPDatasource = HTTPDatasource;
+exports.Globals = Globals;

@@ -12,22 +12,19 @@
   <script src='../dist/proteic.js'></script>
   <meta charset="utf-8" />
   <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+  <link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
   <div id='chart'></div>
 
   <script>
-    var data = {
-            endpoint: 'ws://192.168.3.32:3000/barchart'
-          };
-    var dataSource = new proteic.WebsocketDatasource(data);
+    var ds = new proteic.WebsocketDatasource({
+      endpoint: 'ws://192.168.3.32:3000/barchart'
+    });
     
-          //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
-          //Chart uses #chart selector by default
-          barchart = new proteic.Barchart(dataSource);
-          //Start streaming
-          dataSource.start();
+    barchart = new proteic.Barchart([]).datasource(ds);
+    ds.start();
   </script>
 </body>
 

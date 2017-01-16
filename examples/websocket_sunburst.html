@@ -12,6 +12,7 @@
     <script src='../dist/proteic.js'></script>
     <meta charset="utf-8" />
     <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
@@ -21,12 +22,12 @@
       var data = {
           endpoint: 'ws://192.168.3.32:3000/sunburst'
         };
-      var dataSource = new proteic.WebsocketDatasource(data);
+      var ds = new proteic.WebsocketDatasource(data);
       //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
       //Chart uses #chart selector by default
-      sunburst = new proteic.Sunburst(dataSource);
+      sunburst = new proteic.Sunburst().datasource(ds);
       //Start streaming
-      dataSource.start()
+      ds.start()
     </script>
 </body>
 

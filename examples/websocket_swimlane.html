@@ -54,6 +54,7 @@
     <script src='../node_modules/d3/build/d3.min.js'></script>
     <script src='../dist/proteic.js'></script>
     <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
@@ -62,14 +63,13 @@
     <script>
         var data = {
             endpoint: 'ws://192.168.3.32:3000/swimlane'
-          };
-        var dataSource = new proteic.WebsocketDatasource(data);
-          //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
-          //Chart uses #chart selector by default
+        };
+        
+        var ds = new proteic.WebsocketDatasource(data);
 
-        swimlane = new proteic.Swimlane(dataSource);
-          //Start streaming
-        dataSource.start();
+        swimlane = new proteic.Swimlane([],{}).datasource(ds);
+
+        ds.start();
     </script>
 </body>
 

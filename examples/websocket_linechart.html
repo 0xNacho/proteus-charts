@@ -14,6 +14,7 @@
         <script src='../dist/proteic.js'></script>
         <meta charset="utf-8" />
         <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+        <link rel="stylesheet" href="../dist/proteic.css">
     </head>
 
     <body>
@@ -22,12 +23,10 @@
             var data = {
             endpoint: 'ws://192.168.3.32:3000/linechart'
           };
-     var dataSource = new proteic.WebsocketDatasource(data);
-          //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
-          //Chart uses #chart selector by default
-          linechart = new proteic.Linechart(dataSource);
-          //Start streaming
-          dataSource.start()
+          
+          var ds = new proteic.WebsocketDatasource(data);
+          linechart = new proteic.Linechart([], {markerSize: 100, areaOpacity: 0.7}).datasource(ds);
+          ds.start();
         </script>
     </body>
 
