@@ -22,20 +22,6 @@ abstract class Chart {
         this.data = data;
     }
 
-    // public static getAvailableVisualizations() {
-    //     let classNames = [];
-    //     let obj = Object.getPrototypeOf(this);
-    //     let className: string;
-
-    //     // while ((className = obj.constructor.name) !== "Object") {
-    //     //     classNames.push(className);
-    //     //     obj = Object.getPrototypeOf(obj);
-    //     // }
-
-    //     console.log(obj);
-
-    // }
-
     public draw(data: [{}] = this.data) { //TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like). 
         this.context.draw(copy(data));
         this.data = data;

@@ -79,12 +79,12 @@ class YAxis extends Component {
                 let keys: string[] = map(data, (d: any) => d[propertyKey]).keys();
                 let stack = this.config.get('stack');
                 let stackedData = stack.keys(keys)(simple2stacked(data, propertyX, propertyY, propertyKey));
-                let min = d3Min(stackedData, (serie: any) => d3Min(serie, (d: any) => d[0]));
-                let max = d3Max(stackedData, (serie: any) => d3Max(serie, (d: any) => d[1]));
+                let min = Number.parseFloat(d3Min(stackedData, (serie: any) => d3Min(serie, (d: any) => d[0])));
+                let max = Number.parseFloat(d3Max(stackedData, (serie: any) => d3Max(serie, (d: any) => d[1])));
                 this.updateDomainByMinMax(min, max);
             } else {
-                let min = d3Min(data, (d: any) => d[propertyY]),
-                    max = d3Max(data, (d: any) => d[propertyY]);
+                let min = Number.parseFloat(d3Min(data, (d: any) => d[propertyY])),
+                    max = Number.parseFloat(d3Max(data, (d: any) => d[propertyY]));
 
                 this.updateDomainByMinMax(min, max);
             }
