@@ -1,3 +1,6 @@
+# 0.0.15 (2017-02-24)
+* Fix missing dist folder
+
 # 0.0.14 (2017-02-22)
 * Add helper methods that retrieve available configurations and scales
 
