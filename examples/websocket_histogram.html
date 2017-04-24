@@ -1,0 +1,33 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>         <html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>         <html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class='no-js' lang=''>
+<!--<![endif]-->
+
+<head>
+  <title>Websocket histogram</title>
+  <script src='../node_modules/d3/build/d3.min.js'></script>
+  <script src='../dist/proteic.js'></script>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../dist/proteic.css">
+</head>
+
+<body>
+  <div id='chart' style="width: 70%"></div>
+
+  <script>
+    var ws = new WebSocket('ws://localhost:3000/matrix');
+
+    var ds = new proteic.WebsocketDatasource(ws);
+    
+    barchart = new proteic.Histogram([], {
+      propertyKey: 'x',
+      bins: 11
+    }).datasource(ds);
+    ds.start();
+  </script>
+</body>
+
+</html>

@@ -27,6 +27,7 @@ export const defaults: any = {
     width: '100%',
     height: 350,
     legend: true,
+    legendTitle: '',
     propertyX: 'x',
     propertyY: 'y',
     propertyZ: 'z',

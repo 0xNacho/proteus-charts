@@ -7,7 +7,7 @@ class Sunburst extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategySunburst(),
+            SvgStrategySunburst,
             data,
             userConfig,
             defaults

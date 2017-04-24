@@ -7,7 +7,7 @@ class PieChart extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyPieChart,
+            SvgStrategyPieChart,
             data,
             userConfig,
             defaults

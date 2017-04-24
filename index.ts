@@ -17,17 +17,5 @@ export { Colors };
 
 // Functions
 export {
-    getAvailableVisualizations
-} from './src/core';
-
-export {
-    getDefaultOptions
-} from './src/core';
-
-export {
-    getColorScales
-} from './src/core';
-
-export {
-    getColorScale
-} from './src/core';
+    getDefaultOptions,getAvailableVisualizations,getColorScales,getColorScale
+} from './src/utils/functions';

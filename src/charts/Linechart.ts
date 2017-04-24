@@ -7,7 +7,7 @@ class Linechart extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyLinechart(),
+            SvgStrategyLinechart,
             data,
             userConfig,
             defaults

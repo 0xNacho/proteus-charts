@@ -7,7 +7,7 @@ class Scatterplot extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyScatterplot(),
+            SvgStrategyScatterplot,
             data,
             userConfig,
             defaults

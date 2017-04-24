@@ -7,7 +7,7 @@ class Heatmap extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyHeatmap(),
+            SvgStrategyHeatmap,
             data,
             userConfig,
             defaults

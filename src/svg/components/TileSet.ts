@@ -36,18 +36,18 @@ class TileSet extends Component {
             maxX = max(data, (d) => d[propertyX]),
             maxY = max(data, (d) => d[propertyY]);
 
-        colorScale.domain([0, max(data, (d) => d[propertyZ])]);
+        colorScale.domain([min(data, (d) => d[propertyZ]), max(data, (d) => d[propertyZ])]);
 
         if (xAxisType === 'linear') {
             this.x.updateDomainByMinMax(minX, maxX + xStep);
-            this.x.transition(0);
+            this.x.transition(Globals.COMPONENT_ANIMATION_TIME);
             width = x(xStep) - x(0);
         } else if (xAxisType === 'categorical') {
             width = x.step();
         }
         if (yAxisType === 'linear') {
             this.y.updateDomainByMinMax(minY, maxY + yStep);
-            this.y.transition(0);
+            this.y.transition(Globals.COMPONENT_ANIMATION_TIME);
             heigth = y(0) - y(yStep);
         } else if (yAxisType === 'categorical') {
             heigth = y.step();
@@ -60,6 +60,7 @@ class TileSet extends Component {
         // Update
         tiles.attr('class', 'tile')
             .transition()
+            .duration(Globals.COMPONENT_ANIMATION_TIME)
             .attr('x', (d) => x(d[propertyX]))
             .attr('y', (d) => {
                 if (yAxisType === 'linear') {
@@ -70,10 +71,11 @@ class TileSet extends Component {
             })
             .attr('width', width)
             .attr('height', heigth)
+            .attr('fill-opacity', 1)
             .style('fill', (d) => colorScale(d[propertyZ]));
 
         // Enter
-        tiles
+        let entering = tiles
             .enter().append('rect')
             .attr('class', 'tile')
             .attr('x', (d) => x(d[propertyX]))

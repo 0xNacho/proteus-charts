@@ -19,6 +19,10 @@ export {
 } from './Heatmap'
 
 export {
+    default as Histogram
+} from './Histogram'
+
+export {
     default as Scatterplot
 } from './Scatterplot';
 

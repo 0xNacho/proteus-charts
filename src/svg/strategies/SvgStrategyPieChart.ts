@@ -1,8 +1,8 @@
-import SvgChart from "../base/SvgChart";
+import SvgStrategy from "../base/SvgStrategy";
 import SectorSet from "../components/SectorSet";
 import Legend from "../components/Legend";
 
-class SvgStrategyPieChart extends SvgChart {
+class SvgStrategyPieChart extends SvgStrategy {
 
     private sectors: SectorSet;
     private legend: Legend;

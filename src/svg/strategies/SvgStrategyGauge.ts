@@ -1,13 +1,13 @@
 
 import Config from '../../Config';
-import SvgChart from '../base/SvgChart';
+import SvgStrategy from '../base/SvgStrategy';
 import { sortByField } from '../../utils/data/sorting';
 import { convertByXYFormat } from '../../utils/data/transforming';
 import Dial from '../components/Dial';
 import DialNeedle from '../components/DialNeedle';
 import TextIndicator from "../components/TextIndicator";
 
-class SvgStrategyGauge extends SvgChart {
+class SvgStrategyGauge extends SvgStrategy {
 
     private dial: Dial;
     private dialNeedle: DialNeedle;

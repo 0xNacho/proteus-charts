@@ -1,3 +1,7 @@
+import * as charts from '../charts/';
+import * as colors from './colors';
+import * as defaults from './defaults/';
+
 
 export function isArray(d: any) {
   return d && d.constructor === Array && d instanceof Array;
@@ -106,16 +110,68 @@ export function isValuesInObjectKeys(values: Array<any>, keys: Array<string>): F
 }
 
 export function hasValuesWithKeys(obj: any, values: Array<any>, keys: Array<any>) {
-    for (let key of keys) {
-      let value: any = obj[key];
-      if (values.indexOf(value) != -1) {
-        return true;
-      }
+  for (let key of keys) {
+    let value: any = obj[key];
+    if (values.indexOf(value) != -1) {
+      return true;
     }
-    return false;
+  }
+  return false;
 }
-
 
 export function arrayDiff(a: Array<string>, b: Array<string>) {
   return b.filter((i) => a.indexOf(i) < 0);
 };
+
+export function filterKeys(datum: any, keys: any[]) {
+    let anemicDatum: any = {};
+
+    for (let k of keys) {
+        anemicDatum[k] = datum[k];
+    }
+
+    return anemicDatum;
+}
+
+// /** 
+//  * Get the list of visualizations available in Proteic.js
+//  */
+export function getAvailableVisualizations(): String[] {
+  let visualizations = new Set<String>();
+
+  for (let property in charts) {
+    if (typeof property == 'string' && property !== charts.Chart.prototype.constructor.name) {
+      visualizations.add(property);
+    }
+  }
+
+  return Array.from(visualizations);
+}
+
+export function getDefaultOptions(visualization: string) {
+  if (visualization in defaults) {
+    return (<any>defaults)[visualization];
+  } else {
+    throw new Error('Unrecognised visualization.');
+  }
+}
+
+export function getColorScales() {
+  let colorScales = new Set<String>();
+
+  for (let property in colors) {
+    if (typeof property == 'string') {
+      colorScales.add(property);
+    }
+  }
+
+  return Array.from(colorScales);
+}
+
+export function getColorScale(name: string) {
+  if (name in colors) {
+    return (<any>colors)[name]
+  } else {
+    throw new Error('Unrecognised color scale.');
+  }
+}

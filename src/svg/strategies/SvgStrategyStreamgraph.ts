@@ -3,11 +3,11 @@ import Legend from '../components/Legend';
 import Streamset from '../components/Streamset';
 
 import Config from '../../Config';
-import SvgChart from '../base/SvgChart';
+import SvgStrategy from '../base/SvgStrategy';
 import { sortByField } from '../../utils/data/sorting';
 import { convertPropretiesToTimeFormat } from '../../utils/data/transforming';
 
-class SvgStrategyStreamgraph extends SvgChart {
+class SvgStrategyStreamgraph extends SvgStrategy {
     /**
      * 
      * XY Axes. Horizontal and vertical references

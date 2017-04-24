@@ -1,3 +1,13 @@
+# 0.0.25 (2017-04-24)
+* ⭐ **New visualization: Histogram**
+* Add Annotation component :pencil:
+* Add ColorLegend component :art:
+* Fix important performance issues :zap:
+* Update D3 version
+* Minor fixes improvements
+
+:rocket:
+
 # 0.0.24 (2017-03-07)
 * Sequential scales bugfix
 

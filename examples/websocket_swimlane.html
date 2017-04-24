@@ -53,7 +53,6 @@
     <title>Websocket swimlane</title>
     <script src='../node_modules/d3/build/d3.min.js'></script>
     <script src='../dist/proteic.js'></script>
-    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
     <link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
@@ -61,7 +60,7 @@
     <div id='chart'></div>
 
     <script>
-        var ws = new WebSocket('ws://192.168.3.32:3000/swimlane');
+        var ws = new WebSocket('wss://proteicws.herokuapp.com/swimlane');
 
         var ds = new proteic.WebsocketDatasource(ws);
 

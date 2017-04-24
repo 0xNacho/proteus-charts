@@ -6,7 +6,7 @@ class Gauge extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyGauge(),
+            SvgStrategyGauge,
             data,
             userConfig,
             defaults

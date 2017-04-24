@@ -10,7 +10,7 @@
 	<title>Static scatter plot example</title>
 	<script src='../node_modules/d3/build/d3.min.js'></script>
 	<script src='../dist/proteic.js'></script>
-	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+	<script src="datasets.js"></script>
 	<link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
@@ -174,12 +174,18 @@
 		{ "x": "5.9", "y": "3.0", "key": "virginica" }
 	];
 
-	var chart = new proteic.Scatterplot(data,{
-		xAxisLabel:'Sepal length (cm)',
-		yAxisLabel:'Sepal width (cm)',
+	var chart = new proteic.Scatterplot(iris,{
+		xAxisLabel:'Petal length (cm)',
+		propertyX: 'petalLength',
+		yAxisLabel:'Petal width (cm)',
+		propertyY: 'petalWidth',
 		markerShape: 'triangle',
+		propertyKey: 'species',
 		onClick: (d) => window.console.log(d)
-	});
+	}).annotations([
+		{ type: 'threshold', axis: 'y', value: 1.8, text: 'Test' },
+		{ type: 'threshold', axis: 'x', value: 2, text: 'Test' }
+	]);
 	chart.draw();
 
 	var chart2 = new proteic.Scatterplot(data ,{

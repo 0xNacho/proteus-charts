@@ -10,15 +10,12 @@
 	<title>Simple linechart</title>
 	<script src='../node_modules/d3/build/d3.min.js'></script>
 	<script src='../dist/proteic.js'></script>
-	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
 	<link rel="stylesheet" href="../dist/proteic.css">
 </head>
 
 <body>
 	<div id='chart'></div>
-
 	<div id='chart-temporal'></div>
-
 
 	<script>
         var dataArea = [
@@ -52,47 +49,50 @@
         onHover: (d) => console.log('hovering', d),
         onDown: (d) => console.log('downing', d),
         onLeave: (d) => console.log('leaving', d),
-    });
+    }).annotations([
+        { type: 'threshold', axis: 'y', value: 15.2, text: 'Everything is fine below this line' },
+        { type: 'threshold', axis: 'y', value: 6.8, text: 'We\'re on trouble over this line' },
+        { type: 'threshold', axis: 'x', value: 3.1, text: 'Something could happen at this point' }
+    ]);
     areaLinechart.draw();
 
+    var temporalData = [
+        {key:'serie1', x: '01/01/16', y: 3},
+        {key:'serie1', x: '01/02/16', y: 5},
+        {key:'serie1', x: '01/03/16', y: 3},
+        {key:'serie1', x: '01/04/16', y: 8},
+        {key:'serie1', x: '01/04/16', y: 3},
+        {key:'serie1', x: '01/05/16', y: 5},
+        {key:'serie1', x: '01/06/16', y: 3},
+        {key:'serie1', x: '01/07/16', y: 8},
+        {key:'serie1', x: '01/08/16', y: 3},
+        {key:'serie1', x: '01/09/16', y: 5},
+        {key:'serie1', x: '01/10/16', y: 3},
+        {key:'serie1', x: '01/11/16', y: 8},
+        {key:'serie1', x: '01/12/16', y: 3},
+        {key:'serie1', x: '01/13/16', y: 5},
+        {key:'serie1', x: '01/14/16', y: 3},
+        {key:'serie1', x: '01/15/16', y: 8},
+        {key:'serie1', x: '01/19/16', y: 5}, //unsorted!!!!
+        {key:'serie1', x: '01/16/16', y: 3},
+        {key:'serie1', x: '01/17/16', y: 8},
+        {key:'serie1', x: '01/18/16', y: 3},
+        {key:'serie1', x: '01/20/16', y: 3},
+        {key:'serie2', x: '01/10/16', y: 8},
+        {key:'serie2', x: '01/14/16', y: 5}
+    ];
 
-        var temporalData = [
-                    {key:'serie1', x: '01/01/16', y: 3},
-                    {key:'serie1', x: '01/02/16', y: 5},
-                    {key:'serie1', x: '01/03/16', y: 3},
-                    {key:'serie1', x: '01/04/16', y: 8},
-                    {key:'serie1', x: '01/04/16', y: 3},
-                    {key:'serie1', x: '01/05/16', y: 5},
-                    {key:'serie1', x: '01/06/16', y: 3},
-                    {key:'serie1', x: '01/07/16', y: 8},
-                    {key:'serie1', x: '01/08/16', y: 3},
-                    {key:'serie1', x: '01/09/16', y: 5},
-                    {key:'serie1', x: '01/10/16', y: 3},
-                    {key:'serie1', x: '01/11/16', y: 8},
-                    {key:'serie1', x: '01/12/16', y: 3},
-                    {key:'serie1', x: '01/13/16', y: 5},
-                    {key:'serie1', x: '01/14/16', y: 3},
-                    {key:'serie1', x: '01/15/16', y: 8},
-                    {key:'serie1', x: '01/19/16', y: 5}, //unsorted!!!!
-                    {key:'serie1', x: '01/16/16', y: 3},
-                    {key:'serie1', x: '01/17/16', y: 8},
-                    {key:'serie1', x: '01/18/16', y: 3},
-                    {key:'serie1', x: '01/20/16', y: 3},
-                    {key:'serie2', x: '01/10/16', y: 8},
-                    {key:'serie2', x: '01/14/16', y: 5}
-        ];
-
-        temporalLinechart = new proteic.Linechart(temporalData, {
-            xAxisType: 'time',
-            xAxisFormat: '%m/%d/%y',
-            selector: '#chart-temporal',
-            width: '90%',
-            markerSize: 0, // No markers,
-            areaOpacity: 0, // No area
-            xAxisLabel: 'Numbers',
-            yAxisLabel: 'Y Axis'
-        });
-        temporalLinechart.draw();
+    temporalLinechart = new proteic.Linechart(temporalData, {
+        xAxisType: 'time',
+        xAxisFormat: '%m/%d/%y',
+        selector: '#chart-temporal',
+        width: '90%',
+        markerSize: 0, // No markers,
+        areaOpacity: 0, // No area
+        xAxisLabel: 'Numbers',
+        yAxisLabel: 'Y Axis'
+    });
+    temporalLinechart.draw();
 
   </script>
 </body>

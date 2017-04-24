@@ -10,23 +10,15 @@
 	<title>Multiseries Barchart</title>
 	<script src='../node_modules/d3/build/d3.min.js'></script>
 	<script src='../dist/proteic.js'></script>
+  <script src="./datasets.js"></script>
 	<meta charset="utf-8" />
-	<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
 	<link rel="stylesheet" href="../dist/lighter.css">
   <style>
 
     body {
       background-color: navy;
-    }
-
-    #chart {
-      float: left;
-      width: 50%;
-    }
-
-    #chartGrouped {
-      float: right;
-      width: 50%;
+      display: grid;
+      grid-template-columns: 1fr 1fr
     }
   </style>
 </head>
@@ -34,9 +26,8 @@
 
 <body>
 
-	<div id='chart'></div>
-
-	<div id='chartGrouped'></div>
+    <div id='chart'></div>
+    <div id='chartGrouped'></div>
 
 	<script>        
     var data = [
@@ -52,6 +43,7 @@
       {x: 'BR', key: '+ 18 - 35', y: 40},
       {x: 'BR', key: '+ 35', y: 40}
     ];
+
             //Default config uses #chart selector
     var barchart = new proteic.Barchart(data, {
       stacked: true,
@@ -68,7 +60,6 @@
       yAxisLabel: 'People (%)'
     });
     barchartGrouped.draw();
-            
             
   </script>
 </body>

@@ -7,7 +7,7 @@ class Streamgraph extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyStreamgraph(),
+            SvgStrategyStreamgraph,
             data,
             userConfig,
             defaults

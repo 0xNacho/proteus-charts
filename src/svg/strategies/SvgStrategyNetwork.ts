@@ -2,10 +2,10 @@ import LinkedNodeset from '../components/LinkedNodeset';
 import Legend from '../components/Legend';
 import ZoomComponent from '../components/ZoomComponent';
 import Config from '../../Config';
-import SvgChart from '../base/SvgChart';
+import SvgStrategy from '../base/SvgStrategy';
 import { sortByField } from '../../utils/data/sorting';
 
-class SvgStrategyNetwork extends SvgChart {
+class SvgStrategyNetwork extends SvgStrategy {
 
     private linkedNodes: LinkedNodeset;
     private legend: Legend;

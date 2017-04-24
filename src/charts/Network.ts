@@ -7,7 +7,7 @@ class Network extends Chart {
 
     constructor(data: any, userConfig: any = {}) {
         super(
-            new SvgStrategyNetwork(),
+            SvgStrategyNetwork,
             data,
             userConfig,
             defaults

@@ -53,7 +53,7 @@ class XAxis extends Component {
             //TODO: Optimize it. Currently we are looping data twice.
             let min = d3Min(data, (d) => d[propertyX]),
                 max = d3Max(data, (d) => d[propertyX]);
-            this.updateDomainByMinMax(min, max);
+            this.updateDomainByMinMax(min, Math.ceil(max));
 
         } else if (xAxisType === 'time') {
             let min = d3Min(data, (d) => (d[propertyX] || d[this.config.get('propertyStart')])),

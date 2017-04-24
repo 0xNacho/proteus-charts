@@ -1,14 +1,16 @@
-import { SvgContext } from "../svg/strategies/SvgStrategy";
-import SvgChart from "../svg/base/SvgChart";
-import Config from "../Config";
-import { copy, isValuesInObjectKeys, hasValuesWithKeys } from "../utils/functions";
+import { SvgContext } from "../svg/base/SvgContext";
+import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys } from "../utils/functions";
 import { throwError } from "../utils/error";
+import { Subscription } from 'rxjs';
+import { calculateWidth } from "../utils/screen";
+
+import StreamingStrategy from './enums/StreamingStrategy';
+import Injector from '../MyInjector';
 import Datasource from "../datasources/Datasource";
 import WebsocketDatasource from "../datasources/WebsocketDatasource";
-import { Subscription } from 'rxjs';
-
-import { calculateWidth } from "../utils/screen";
-import StreamingStrategy from './enums/StreamingStrategy';
+import Config from "../Config";
+import SvgStrategy from "../svg/base/SvgStrategy";
+import Globals from '../Globals';
 
 abstract class Chart {
 
@@ -16,14 +18,36 @@ abstract class Chart {
     protected config: Config;
     protected data: any;
     private subscription: Subscription;
+    private _injector: Injector = new Injector();
+    private strategy: SvgStrategy;
 
     protected streamingStrategy: StreamingStrategy;
 
-    constructor(strategy: SvgChart, data: any, userConfig: any, defaults: any) {
+    constructor(Class: { new (...args: any[]): SvgStrategy }, data: any, userConfig: any, defaults: any) {
+
         this.config = this.loadConfigFromUser(userConfig, defaults);
-        this.context = new SvgContext(strategy, this.config);
-        if (data === undefined) { data = []};
+        this._injector = new Injector();
+
+        this._instantiateInjections(Class);
+
         this.data = data;
+    }
+
+    private _instantiateInjections(Class: { new (...args: any[]): SvgStrategy }) {
+        this._injector.mapValue('Config', this.config);
+
+        //Instantiate SvgStrategy
+        this.strategy = this._injector.instantiate(Class);
+        this.strategy.initialize();
+
+        this._injector.mapValue('Strategy', this.strategy);
+        //Instantiate SvgContext
+        this.context = this._injector.instantiate(SvgContext);
+    }
+
+    public annotations(annotations: any): Chart {
+        this.config.put('annotations', annotations);
+        return this;
     }
 
     public draw(data: [{}] = this.data) { //TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like). 
@@ -37,7 +61,6 @@ abstract class Chart {
      * @param {Datasource} ds A datasource
      *
      * @memberOf Chart
-
      */
     public datasource(ds: WebsocketDatasource) {
         let subscription: Subscription = ds.subscription().subscribe(
@@ -47,6 +70,7 @@ abstract class Chart {
         );
 
         this.subscription = subscription;
+        setInterval(() => this.draw(copy(this.data)), Globals.DRAW_INTERVAL);
     }
 
     public removeDatasource() {
@@ -76,23 +100,24 @@ abstract class Chart {
                 this.config.get('propertyX'),
                 this.config.get('propertyY'),
                 this.config.get('propertyZ')
-            ], 
-            filteredDatum = [];
+            ],
+            cleanDatum = [],
+            filteredDatum = filterKeys(datum, keys);
 
         if (datumType === Array) {
-            filteredDatum = datum.filter(isValuesInObjectKeys(nullValues, keys));
+            cleanDatum = datum.filter(isValuesInObjectKeys(nullValues, keys));
         } else {
-            if (!hasValuesWithKeys(datum, nullValues, keys)) {
-                filteredDatum.push(datum);
+            if (!hasValuesWithKeys(filteredDatum, nullValues, keys)) {
+                cleanDatum.push(filteredDatum);
             }
         }
 
         switch (streamingStrategy) {
             case StreamingStrategy.ADD:
-                this.data = this.data.concat(filteredDatum);
+                this.data = this.data.concat(cleanDatum);
                 break;
             case StreamingStrategy.REPLACE:
-                this.data = filteredDatum;
+                this.data = cleanDatum;
                 break;
             case StreamingStrategy.NONE:
                 break;
@@ -101,11 +126,10 @@ abstract class Chart {
 
         //Detect excess of elements given a maxNumberOfElements property
         if (numberOfElements > maxNumberOfElements) {
+            console.log('MAXNUMBEROFELEMENTS');
             let position = numberOfElements - maxNumberOfElements;
             this.data = this.data.slice(position);
         }
-
-        this.draw(copy(this.data));
     }
 }
 

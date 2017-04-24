@@ -11,6 +11,7 @@ class Globals {
     public static ASPECT_RATIO = 0.7;
     public static SELECTOR_SERIE = 'proteic-serie';
     public static SELECTOR_ELEMENT = 'proteic-element';  
+    public static DRAW_INTERVAL = 500;
 };
 
 export default Globals;

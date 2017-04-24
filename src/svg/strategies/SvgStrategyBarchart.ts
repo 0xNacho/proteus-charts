@@ -3,11 +3,11 @@ import Barset from '../components/Barset';
 import Legend from '../components/Legend';
 
 import Config from '../../Config';
-import SvgChart from '../base/SvgChart';
+import SvgStrategy from '../base/SvgStrategy';
 import { sortByField } from '../../utils/data/sorting';
 import { convertByXYFormat } from '../../utils/data/transforming';
 
-class SvgStrategyBarchart extends SvgChart {
+class SvgStrategyBarchart extends SvgStrategy {
     /**
      * 
      * XY Axes. Horizontal and vertical references

@@ -1,9 +1,9 @@
-import SvgChart from "../base/SvgChart";
+import SvgStrategy from "../base/SvgStrategy";
 import RadialAxes from "../components/RadialAxes";
 import SunburstDisk from "../components/SunburstDisk";
 import TextIndicator from "../components/TextIndicator";
 
-class SvgStrategySunburst extends SvgChart {
+class SvgStrategySunburst extends SvgStrategy {
 
     private axes: RadialAxes;
     private disk: SunburstDisk;
