@@ -28,7 +28,8 @@ class Alerts extends Component {
             y = this.y.yAxis.scale(),
             x = this.x.xAxis.scale(),
             alertVariable: string = this.config.get('alertVariable'),
-            alertFunction: Function = this.config.get('alertFunction');
+            alertFunction: Function = this.config.get('alertFunction'),
+            alertCallback = this.config.get('alertCallback');
 
             let alertSerie = data
                 .filter((d) => {
@@ -55,7 +56,8 @@ class Alerts extends Component {
             .attr('cy', (d: any) => y(d[propertyY]))
             .attr('r', 20)
             .transition(Globals.COMPONENT_ANIMATION_TIME)
-            .attr('r', 5);
+            .attr('r', 5)
+            .call((s: any) => s.each((d: any) => alertCallback(d)));
     }
 
     public clear(){
