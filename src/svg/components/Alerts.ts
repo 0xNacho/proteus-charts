@@ -58,10 +58,13 @@ class Alerts extends Component {
             .transition(Globals.COMPONENT_ANIMATION_TIME)
             .attr('r', 5)
             .call((s: any) => s.each((d: any) => alertCallback(d)));
+<<<<<<< HEAD
     }
 
     public clear(){
         console.warn('TODO: Not yet implemented');
+=======
+>>>>>>> 86b5c21a4fda983f28e975e86d45bff1a67b89fe
     }
 }
 
