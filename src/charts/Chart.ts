@@ -80,9 +80,10 @@ abstract class Chart {
         return this;
     }
 
-    public alert(variable: string, condition: Function) {
+    public alert(variable: string, condition: Function, callback: any) {
         this.config.put('alertVariable', variable);
         this.config.put('alertFunction', condition);
+        this.config.put('alertCallback', callback);
         return this;
     }
 
