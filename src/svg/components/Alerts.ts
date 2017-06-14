@@ -20,7 +20,7 @@ class Alerts extends Component {
             .attr('class', 'alerts');
     }
 
-    public update(data: any[], events: Map<string, any>) {
+    public update(data: [any], events: Map<string, any>) {
         let propertyX = this.config.get('propertyX'),
             propertyY = this.config.get('propertyY'),
             propertyKey = this.config.get('propertyKey'),
