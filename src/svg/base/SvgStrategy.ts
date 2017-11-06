@@ -34,7 +34,7 @@ abstract class SvgStrategy {
                 this.container.add(new ErrorSet());
                 break;
             case 'Statistics':
-                this.container.add(new Statistics(axes.x, axes.y));
+                this.container.add(new Statistics(axes.x, axes.y, () => this.container.transitionComponents()));
                 break;
         }
     }

@@ -34,10 +34,13 @@ class Statistics extends Component {
     */
     private confidenceBand: ConfidenceBand;
 
-    constructor(x: XAxis, y: YAxis) {
+    private statisticsCallback: Function; // call transition() in all components added to container
+
+    constructor(x: XAxis, y: YAxis, statisticsCallback: Function) {
         super();
         this.x = x;
         this.y = y;
+        this.statisticsCallback = statisticsCallback;
     }
 
     public render() {
@@ -86,7 +89,7 @@ class Statistics extends Component {
 
     private updateComponent(component: Component, data: [any]) {
         component.update(data);
-        component.transition();
+        this.statisticsCallback();
     }
 
     public transition() {

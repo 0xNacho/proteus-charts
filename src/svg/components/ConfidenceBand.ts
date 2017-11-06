@@ -17,6 +17,7 @@ class ConfidenceBand extends Component {
 
     private x: XAxis;
     private y: YAxis;
+    private yExtent: [number, number];
     private areaGenerator: Area<any>;
 
     /**
@@ -77,6 +78,8 @@ class ConfidenceBand extends Component {
 
         this.elementUpdate = this.svg.selectAll('.confidence')
             .data(dataSeries, (d: any) => d[propertyKey]);
+
+        this.y.updateDomainByMinMax(this.yExtent[0], this.yExtent[1]);
     }
 
     private path(data: any) {
@@ -89,6 +92,19 @@ class ConfidenceBand extends Component {
 
         let confidenceModifier: Function = confidenceConfig.modifier,
             confidence = confidenceConfig.confidence;
+
+        let min = this.y.extent[0],
+            max = this.y.extent[1];
+
+        data.values.map((d: any) => {
+            if (d[propertyY] - confidenceModifier(d[confidence]) < min) {
+                min = d[propertyY] - confidenceModifier(d[confidence]);
+            }
+            if (d[propertyY] + confidenceModifier(d[confidence]) > max) {
+                max = d[propertyY] + confidenceModifier(d[confidence]);
+            }
+        })
+        this.yExtent = [min, max];
 
         this.areaGenerator = area()
             .curve(curve)

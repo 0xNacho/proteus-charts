@@ -18,6 +18,7 @@ class YAxis extends Component {
     private _yAxis: any;
     private _orient: string = 'left';
     private selection: any = null;
+    private yExtent: [number, number];
 
 
     constructor(orient?: string) {
@@ -107,6 +108,7 @@ class YAxis extends Component {
                     }
                 }
             }
+            this.yExtent = [minNumber, maxNumber];
             this.updateDomainByMinMax(minNumber, maxNumber);
 
         } else if (yAxisType === 'categorical') {
@@ -168,7 +170,7 @@ class YAxis extends Component {
                     : axisRight(scaleBand().rangeRound([height, 0]).padding(0.1).align(0.5));
                 break;
             default:
-                throw new Error(`Not allowed type for YAxis. Only allowed 'time', 
+                throw new Error(`Not allowed type for YAxis. Only allowed 'time',
                  'linear' or 'categorical'. Got: ` + yAxisType);
         }
 
@@ -192,6 +194,10 @@ class YAxis extends Component {
 
     get range(): [number, number] {
         return this._yAxis.scale().range();
+    }
+
+    get extent(): [number, number] {
+        return this.yExtent;
     }
 
     public clear() {
