@@ -66,6 +66,8 @@ abstract class Chart {
     // since the rest of configuration options are specified through the config attr
     // TODO: We should create a type for annotations
 
+    private eventKeys: Set<string>;
+
     /**
      * Events
      *
@@ -151,6 +153,7 @@ abstract class Chart {
             this.instantiateInjections(clazz);
 
             this.data = data;
+            this.eventKeys = new Set<string>();
             this.events = new Map();
             this.config.put('pivotVars', []);
 
@@ -183,6 +186,11 @@ abstract class Chart {
         this.config.put('annotations', annotations);
         this.annotationsConfig = annotations;
         this.strategy.addComponent('Annotations', annotations);
+        annotations.forEach((a: any) => {
+            this.eventKeys.add(a.variable);
+            this.eventKeys.add(a.width);
+        });
+
         return this;
     }
 
@@ -194,6 +202,10 @@ abstract class Chart {
     public statistics(statistics: any) {
         this.config.put('statistics', statistics);
         this.strategy.addComponent('Statistics', this.config);
+        statistics.forEach((s: any) => {
+            this.eventKeys.add(s.variable);
+            this.eventKeys.add(s.width);
+        });
         return this;
     }
 
@@ -315,17 +327,8 @@ abstract class Chart {
 
         this.streamDrawing();
 
-        let eventKeys: Set<string> = new Set<string>();
-
-        if (this.annotationsConfig) {
-            this.annotationsConfig.forEach((a: any) => {
-                eventKeys.add(a.variable);
-                eventKeys.add(a.width);
-            });
-        }
-
         // Event detection
-        eventKeys.forEach((e) => {
+        this.eventKeys.forEach((e) => {
             if (e in datum) {
                 this.events.set(e, datum[e]);
             }
