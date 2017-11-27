@@ -113,7 +113,7 @@ class Annotations extends Component {
             if (a.variable) {
                 eventKeys.variable.push(a.variable);
             }
-            if (typeof a.width == 'string') {
+            if (typeof a.width == 'string' && !Number(a.width)) {
                  eventKeys.width.push(a.width);
             }
         });
@@ -158,8 +158,8 @@ class Annotations extends Component {
                     case 'band':
                         a.value = this.events.get(a.variable);
                         if (a.value && a.width) {
-                            let width = a.width;
-                            if (typeof a.width == 'string') {
+                            let width = !Number(a.width) ? a.width : +a.width; // Fault tolerance like '1'
+                            if (typeof width == 'string') {
                                 width = this.events.get(a.width);
                             }
                             if (width !== 0) {
