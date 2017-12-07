@@ -49,12 +49,16 @@ class Alerts extends Component {
 
     /**
     * Alerts only takes confidence-band into account
+    * @todo Issue: if data has more elements than the number of max-elements,
+    * the past alerts points are not deleted
     */
     public update(data: any[]) {
         let latestData = data;
         if (data.length > this.currentDataIndex) {
             latestData = data.slice(this.currentDataIndex);
             this.currentDataIndex = data.length;
+        } else {
+            return;
         }
 
         let propertyX = this.config.get('propertyX'),
@@ -79,6 +83,7 @@ class Alerts extends Component {
                     alertFunction(d[propertyY], events);
             });
 
+        // Check whether duplicated alert data exist to prevent from over-loading to DOM
         if (alertSerie.length > 0) {
             let validAlerts: any[] = [];
             alertSerie.map((alert) => {
