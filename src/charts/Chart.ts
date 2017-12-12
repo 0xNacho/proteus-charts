@@ -270,7 +270,6 @@ abstract class Chart {
     public keepDrawing(datum: any): void {
         let streamingStrategy = this.config.get('streamingStrategy'),
             maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
-            numberOfElements = this.data.length,
             propertyX = this.config.get('propertyX'),
             propertyY = this.config.get('propertyY'),
             propertyZ = this.config.get('propertyZ'),
@@ -325,6 +324,7 @@ abstract class Chart {
             default:
         }
 
+        let numberOfElements = this.data.length;
         // Detect excess of elements given a maxNumberOfElements property
         if (numberOfElements > maxNumberOfElements) {
             let position = numberOfElements - maxNumberOfElements;
