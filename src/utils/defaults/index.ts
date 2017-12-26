@@ -20,7 +20,7 @@ export {
 } from './network';
 
 export {
-    defaults as pieChart
+    defaults as piechart
 } from './piechart';
 
 export {
@@ -28,7 +28,7 @@ export {
 } from './scatterplot';
 
 export {
-    defaults as stackedArea
+    defaults as stackedarea
 } from './stackedArea';
 
 export {
@@ -44,5 +44,5 @@ export {
 } from './swimlane';
 
 export {
-    defaults as parallelCoordinates
+    defaults as parallelcoordinates
 } from './parallelCoordinates';
