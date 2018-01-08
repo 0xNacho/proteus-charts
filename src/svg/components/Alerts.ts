@@ -53,11 +53,18 @@ class Alerts extends Component {
     * the past alerts points are not deleted
     */
     public update(data: any[]) {
-        let latestData = data;
+        let latestData = data,
+            maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
+            numberOfElements = data.length;
+
         if (data.length > this.currentDataIndex) {
             latestData = data.slice(this.currentDataIndex);
-            this.currentDataIndex = data.length;
-        } else {
+            if (numberOfElements < maxNumberOfElements) {
+                this.currentDataIndex = data.length;
+            } else {
+                this.syncAlertsWithData(data);
+            }
+        } else { // No new incoming data
             return;
         }
 
@@ -87,7 +94,11 @@ class Alerts extends Component {
         if (alertSerie.length > 0) {
             let validAlerts: any[] = [];
             alertSerie.map((alert) => {
-                let duplicatedAlert = this.alertsData.find((datum) => alert[propertyX] == datum[propertyX]);
+                // If type of x-axis is time, its prototype is Object.
+                // -> toString() is more flexible to comparison of x-axis value
+                let duplicatedAlert = this.alertsData.find((datum) =>
+                        alert[propertyX].toString() == datum[propertyX].toString()
+                    );
                 if (!duplicatedAlert) {
                     validAlerts.push(alert);
                 }
@@ -126,6 +137,17 @@ class Alerts extends Component {
                 alerts.on(e, alertEvents[e]);
             }
         }
+    }
+
+    private syncAlertsWithData(data: any[]) {
+        let propertyX = this.config.get('propertyX');
+
+        this.alertsData = this.alertsData.filter((alert) => {
+            let validAlert = data.find((d) => d[propertyX].toString() == alert[propertyX].toString());
+            if (validAlert) {
+                return validAlert;
+            }
+        });
     }
 
     private makeEvents(data: any[]): Map<string, any> {
