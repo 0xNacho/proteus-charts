@@ -55,13 +55,16 @@ class Alerts extends Component {
     public update(data: any[]) {
         let latestData = data,
             maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
-            numberOfElements = data.length;
+            numberOfElements = data.length,
+            numberOfIncomingElements = (Globals.DRAW_INTERVAL / 100);
 
         if (data.length > this.currentDataIndex) {
-            latestData = data.slice(this.currentDataIndex);
             if (numberOfElements < maxNumberOfElements) {
+                latestData = data.slice(this.currentDataIndex);
                 this.currentDataIndex = data.length;
             } else {
+                let position = maxNumberOfElements - numberOfIncomingElements;
+                latestData = data.slice(position);
                 this.syncAlertsWithData(data);
             }
         } else { // No new incoming data
