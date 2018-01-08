@@ -140,10 +140,15 @@ class Alerts extends Component {
     }
 
     private syncAlertsWithData(data: any[]) {
-        let propertyX = this.config.get('propertyX');
+        let propertyX = this.config.get('propertyX'),
+            propertyKey = this.config.get('propertyKey'),
+            alertVariable: string = this.config.get('alertVariable');
 
         this.alertsData = this.alertsData.filter((alert) => {
-            let validAlert = data.find((d) => d[propertyX].toString() == alert[propertyX].toString());
+            let validAlert = data.find((d) => {
+                return d[propertyKey] == alertVariable &&
+                        d[propertyX].toString() == alert[propertyX].toString();
+            });
             if (validAlert) {
                 return validAlert;
             }
