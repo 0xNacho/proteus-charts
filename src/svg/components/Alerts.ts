@@ -14,13 +14,13 @@ class Alerts extends Component {
     private alertsContainer: any;
 
     /**
-    * The last index of current data
+    * The last index of updated data
     * Now, alerts is only used to Linechart, and its data is concated.
     * If data is concated, get the latest data by slicing incoming data from this index
     * @private
     * @memberof Alerts
     */
-    private currentDataIndex: number;
+    private lastUpdateIndex: number;
 
     /**
     * An array of the data which makes alert (the value is over than confidence-interval)
@@ -36,7 +36,7 @@ class Alerts extends Component {
     }
 
     private initialize() {
-        this.currentDataIndex = 0;
+        this.lastUpdateIndex = 0;
         this.alertsData = [];
     }
 
@@ -48,9 +48,7 @@ class Alerts extends Component {
     }
 
     /**
-    * Alerts only takes confidence-band into account
-    * @todo Issue: if data has more elements than the number of max-elements,
-    * the past alerts points are not deleted
+    * Important: Now, Alerts only takes confidence-band into account
     */
     public update(data: any[]) {
         let latestData = data,
@@ -58,13 +56,13 @@ class Alerts extends Component {
             numberOfElements = data.length,
             numberOfIncomingElements = (Globals.DRAW_INTERVAL / 100);
 
-        if (data.length > this.currentDataIndex) {
+        if (numberOfElements > this.lastUpdateIndex) {
             if (numberOfElements < maxNumberOfElements) {
-                latestData = data.slice(this.currentDataIndex);
-                this.currentDataIndex = data.length;
+                latestData = data.slice(this.lastUpdateIndex);
+                this.lastUpdateIndex = numberOfElements;
             } else {
-                let position = maxNumberOfElements - numberOfIncomingElements;
-                latestData = data.slice(position);
+                this.lastUpdateIndex = maxNumberOfElements - numberOfIncomingElements;
+                latestData = data.slice(this.lastUpdateIndex);
                 this.syncAlertsWithData(data);
             }
         } else { // No new incoming data
@@ -142,6 +140,12 @@ class Alerts extends Component {
         }
     }
 
+    /**
+    * @method
+    * Synchronize alerts data with current chart data
+    * @private
+    * @memberof Alerts
+    */
     private syncAlertsWithData(data: any[]) {
         let propertyX = this.config.get('propertyX'),
             propertyKey = this.config.get('propertyKey'),
