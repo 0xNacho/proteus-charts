@@ -14,13 +14,13 @@ class Alerts extends Component {
     private alertsContainer: any;
 
     /**
-    * The last index of current data
+    * The last index of updated data
     * Now, alerts is only used to Linechart, and its data is concated.
     * If data is concated, get the latest data by slicing incoming data from this index
     * @private
     * @memberof Alerts
     */
-    private currentDataIndex: number;
+    private lastUpdateIndex: number;
 
     /**
     * An array of the data which makes alert (the value is over than confidence-interval)
@@ -36,7 +36,7 @@ class Alerts extends Component {
     }
 
     private initialize() {
-        this.currentDataIndex = 0;
+        this.lastUpdateIndex = 0;
         this.alertsData = [];
     }
 
@@ -48,16 +48,24 @@ class Alerts extends Component {
     }
 
     /**
-    * Alerts only takes confidence-band into account
-    * @todo Issue: if data has more elements than the number of max-elements,
-    * the past alerts points are not deleted
+    * Important: Now, Alerts only takes confidence-band into account
     */
     public update(data: any[]) {
-        let latestData = data;
-        if (data.length > this.currentDataIndex) {
-            latestData = data.slice(this.currentDataIndex);
-            this.currentDataIndex = data.length;
-        } else {
+        let latestData = data,
+            maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
+            numberOfElements = data.length,
+            numberOfIncomingElements = (Globals.DRAW_INTERVAL / 100);
+
+        if (numberOfElements > this.lastUpdateIndex) {
+            if (numberOfElements < maxNumberOfElements) {
+                latestData = data.slice(this.lastUpdateIndex);
+                this.lastUpdateIndex = numberOfElements;
+            } else {
+                this.lastUpdateIndex = maxNumberOfElements - numberOfIncomingElements;
+                latestData = data.slice(this.lastUpdateIndex);
+                this.syncAlertsWithData(data);
+            }
+        } else { // No new incoming data
             return;
         }
 
@@ -87,7 +95,11 @@ class Alerts extends Component {
         if (alertSerie.length > 0) {
             let validAlerts: any[] = [];
             alertSerie.map((alert) => {
-                let duplicatedAlert = this.alertsData.find((datum) => alert[propertyX] == datum[propertyX]);
+                // If type of x-axis is time, its prototype is Object.
+                // -> toString() is more flexible to comparison of x-axis value
+                let duplicatedAlert = this.alertsData.find((datum) =>
+                        alert[propertyX].toString() == datum[propertyX].toString()
+                    );
                 if (!duplicatedAlert) {
                     validAlerts.push(alert);
                 }
@@ -126,6 +138,28 @@ class Alerts extends Component {
                 alerts.on(e, alertEvents[e]);
             }
         }
+    }
+
+    /**
+    * @method
+    * Synchronize alerts data with current chart data
+    * @private
+    * @memberof Alerts
+    */
+    private syncAlertsWithData(data: any[]) {
+        let propertyX = this.config.get('propertyX'),
+            propertyKey = this.config.get('propertyKey'),
+            alertVariable: string = this.config.get('alertVariable');
+
+        this.alertsData = this.alertsData.filter((alert) => {
+            let validAlert = data.find((d) => {
+                return d[propertyKey] == alertVariable &&
+                        d[propertyX].toString() == alert[propertyX].toString();
+            });
+            if (validAlert) {
+                return validAlert;
+            }
+        });
     }
 
     private makeEvents(data: any[]): Map<string, any> {

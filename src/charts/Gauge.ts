@@ -16,6 +16,9 @@ class Gauge extends Chart {
     public keepDrawing(datum: any) {
         let pause: boolean = this.config.get('pause');
 
+        if (!Array.isArray(datum)) {
+            datum = [datum];
+        }
         this.data = [datum[0]];
 
         if (pause) {

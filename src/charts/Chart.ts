@@ -356,9 +356,18 @@ abstract class Chart {
     }
 
     public pauseDrawing() {
+        let maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
+            numberOfPausedElements = this.storedData.length;
+
         this.stopDrawing();
         this.resumeIntervalIdentifier = null;
+
         this.storedData.push(this.data);
+        // Slice excess paused data to prevent data overloading
+        if (numberOfPausedElements > maxNumberOfElements) {
+            let position = numberOfPausedElements - maxNumberOfElements;
+            this.storedData = this.storedData.slice(position);
+        }
     }
 
     public resumeDrawing() {
