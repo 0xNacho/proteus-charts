@@ -12,7 +12,8 @@ export const defaults: any = {
     height: 450,
     tickLabel: '',
     transitionDuration: 300,
-    maxNumberOfElements: 5, // used by keepDrawing to reduce the number of elements in the current chart
+    // maxNumberOfElements: 5, // TODO Improve how to slice excess elements.
+                               // Elements of sunburst have parent-child relationship.
     streamingStrategy: StreamingStrategy.ADD,
     onDown(d: any) {
     },
