@@ -269,7 +269,6 @@ abstract class Chart {
 
     public keepDrawing(datum: any): void {
         let streamingStrategy = this.config.get('streamingStrategy'),
-            maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
             propertyX = this.config.get('propertyX'),
             propertyY = this.config.get('propertyY'),
             propertyZ = this.config.get('propertyZ'),
@@ -314,7 +313,6 @@ abstract class Chart {
         switch (streamingStrategy) {
             case StreamingStrategy.ADD:
                 this.data = this.data.concat(cleanDatum);
-
                 break;
             case StreamingStrategy.REPLACE:
                 this.data = cleanDatum;
@@ -324,12 +322,7 @@ abstract class Chart {
             default:
         }
 
-        let numberOfElements = this.data.length;
-        // Detect excess of elements given a maxNumberOfElements property
-        if (numberOfElements > maxNumberOfElements) {
-            let position = numberOfElements - maxNumberOfElements;
-            this.data = this.data.slice(position);
-        }
+        this.sliceExcessStreamingData();
 
         if (pause) {
             this.pauseDrawing();
@@ -342,7 +335,8 @@ abstract class Chart {
     }
 
     /**
-    * @method It can draw for streaming chart and can add components only for streaming chart (ex. pause-button)
+    * @method
+    * It can draw for streaming chart and can add components only for streaming chart (ex. pause-button)
     * @private
     * @memberof Chart
     * @todo If new components only for streaming chart, it can be added here.
@@ -355,6 +349,28 @@ abstract class Chart {
         }
     }
 
+    /**
+    * @method
+    * It slices excess streaming data detected by configurated maxNumberOfElements property
+    * @private
+    * @memberof Chart
+    */
+    public sliceExcessStreamingData() {
+        let numberOfElements = this.data.length,
+            maxNumberOfElements: number = this.config.get('maxNumberOfElements');
+
+        if (numberOfElements > maxNumberOfElements) {
+            let position = numberOfElements - maxNumberOfElements;
+            this.data = this.data.slice(position);
+        }
+    }
+
+    /**
+    * @method
+    *
+    * @private
+    * @memberof Chart
+    */
     public pauseDrawing() {
         let maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
             numberOfPausedElements = this.storedData.length;
@@ -363,7 +379,7 @@ abstract class Chart {
         this.resumeIntervalIdentifier = null;
 
         this.storedData.push(this.data);
-        // Slice excess paused data to prevent data overloading
+        // Slice excess paused data to prevent from data over-loading
         if (numberOfPausedElements > maxNumberOfElements) {
             let position = numberOfPausedElements - maxNumberOfElements;
             this.storedData = this.storedData.slice(position);
