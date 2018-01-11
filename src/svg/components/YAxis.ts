@@ -103,8 +103,25 @@ class YAxis extends Component {
                 min = (d3Min(stackedData, (serie: any) => d3Min(serie, (d: any) => d[0])));
                 max = (d3Max(stackedData, (serie: any) => d3Max(serie, (d: any) => d[1])));
             } else {
-                min = (d3Min(data, (d: any) => d[propertyY]));
-                max = (d3Max(data, (d: any) => d[propertyY]));
+                let yAxisMin = this.config.get('yAxisMin'),
+                    yAxisMax = this.config.get('yAxisMax');
+
+                if (yAxisMin == 'auto') {
+                    min = (d3Min(data, (d: any) => d[propertyY]));
+                } else {
+                    min = (d3Min(data, (d: any) => d[propertyY]) < yAxisMin)
+                            ? d3Min(data, (d: any) => d[propertyY])
+                            : yAxisMin;
+                }
+
+                if (yAxisMax == 'auto') {
+                    max = (d3Max(data, (d: any) => d[propertyY]));
+                } else {
+                    max = (d3Max(data, (d: any) => d[propertyY]) > yAxisMax)
+                            ? d3Max(data, (d: any) => d[propertyY])
+                            : yAxisMax;
+                }
+
             }
 
             let minNumber = +min;

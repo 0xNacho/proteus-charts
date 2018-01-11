@@ -11,12 +11,16 @@ export const defaults: any = {
     xAxisFormat: '',
     xAxisLabel: null,
     xAxisGrid: true,
+    xAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    xAxisMax: 'auto',
     xTicksTextRotation: -65,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: null,
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    yAxisMax: 'auto',
     marginTop: 50,
     marginRight: 250,
     marginBottom: 130,
