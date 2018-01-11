@@ -162,6 +162,9 @@ class YAxis extends Component {
 
     public updateDomainByMinMax(min: number, max: number) {
         let margin = (+max - min) * 0.1 || 1;
+        if (min < 0) {
+            min = min - margin;
+        }
         this._yAxis.scale().domain([min, max + margin]);
     }
 

@@ -181,8 +181,10 @@ class Barset extends Component {
             .transition()
             .duration(Globals.COMPONENT_ANIMATION_TIME)
             .ease(easeLinear)
-            .attr('y', (d: any) => y(d[propertyY]))
-            .attr('height', (d: any) => height - y(d[propertyY]));
+            .attr('y', (d: any) => {
+                return d[propertyY] > 0 ? y(d[propertyY]) : y(0);
+            })
+            .attr('height', (d: any) => Math.abs(y(0) - y(d[propertyY])));
 
         this.elementExit
             .transition()
@@ -195,9 +197,12 @@ class Barset extends Component {
             .transition()
             .duration(Globals.COMPONENT_ANIMATION_TIME)
             .ease(easeLinear)
-            .attr('y', (d: any) => y(d[propertyY]))
+            // .attr('y', (d: any) => y(d[propertyY]))
+            .attr('y', (d: any) => {
+                return d[propertyY] > 0 ? y(d[propertyY]) : y(0);
+            })
             .attr('width', xGroup.bandwidth())
-            .attr('height', (d: any) => height - y(d[propertyY]));
+            .attr('height', (d: any) => Math.abs(y(0) - y(d[propertyY])));
     }
 
     public clear() {
