@@ -197,7 +197,6 @@ class Barset extends Component {
             .transition()
             .duration(Globals.COMPONENT_ANIMATION_TIME)
             .ease(easeLinear)
-            // .attr('y', (d: any) => y(d[propertyY]))
             .attr('y', (d: any) => {
                 return d[propertyY] > 0 ? y(d[propertyY]) : y(0);
             })
