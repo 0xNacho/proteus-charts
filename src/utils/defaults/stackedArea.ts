@@ -13,12 +13,16 @@ export const defaults: any = {
     xAxisFormat: '%y/%m/%d',
     xAxisLabel: '',
     xAxisGrid: true,
+    xAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    xAxisMax: 'auto',
     xTicksTextRotation: 65,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: '',
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
