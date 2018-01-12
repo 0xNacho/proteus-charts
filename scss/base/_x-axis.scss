@@ -45,9 +45,7 @@
   }
 
   .baseline {
-    line {
-      stroke: $structure-color-bright;
-      stroke-width: $y-axis-line-width;
-    }
+    stroke: $structure-color-bright;
+    stroke-width: $y-axis-line-width;
   }
 }

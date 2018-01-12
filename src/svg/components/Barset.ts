@@ -154,12 +154,13 @@ class Barset extends Component {
         // EXIT bars
         this.elementExit = bars.exit();
 
-        this.svg.append('g')
+        this.svg.select('.baseline').remove();
+        this.svg.append('line')
           .attr('class', 'baseline')
-          .append('line')
           .attr('y1', y(0))
           .attr('y2', y(0))
           .attr('x2', width);
+
     }
 
     public transition() {
