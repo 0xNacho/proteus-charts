@@ -15,7 +15,7 @@
 	<link rel="stylesheet" href="../dist/lighter.css">
   <style>
     body {
-      background-color: navy;
+      background-color: royalBlue;
       display: grid;
       grid-template-columns: 1fr 1fr
     }
@@ -27,7 +27,8 @@
 
     <div id='chart'></div>
     <div id='chartGrouped'></div>
-	<div id='chartWithNegativeValue'></div>
+		<div id='chartWithNegativeValue'></div>
+		<div id="amortizationSchedule"></div>
 
 	<script>
     var data = [
@@ -70,13 +71,24 @@
     });
     barchartGrouped.draw();
 
-	var barchartWithNegativeValue = new proteic.Barchart(dataWithNegativeValue, {
-		selector: '#chartWithNegativeValue',
-		stacked: false,
-		xAxisLabel: 'Countries',
-        yAxisLabel: 'People (%)'
-	});
-	barchartWithNegativeValue.draw();
+		var barchartWithNegativeValue = new proteic.Barchart(dataWithNegativeValue, {
+			selector: '#chartWithNegativeValue',
+			stacked: false,
+			xAxisLabel: 'Countries',
+      yAxisLabel: 'People (%)',
+			colorScale: proteic.Colors.category2()
+		});
+		barchartWithNegativeValue.draw();
+
+		var amortizationScheduleChart = new proteic.Barchart(amortizationSchedule, {
+			selector: '#amortizationSchedule',
+			stacked: false,
+			xAxisLabel: 'Years',
+			xTicksTextRotation: -65,
+			yAxisLabel: '€',
+			colorScale: proteic.Colors.category1()
+		});
+		amortizationScheduleChart.draw();
 
   </script>
 </body>
