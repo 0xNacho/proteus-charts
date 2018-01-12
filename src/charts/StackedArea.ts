@@ -24,10 +24,6 @@ class StackedArea extends Chart {
             ],
             pause: boolean = this.config.get('pause');
 
-        if (this.storedData.length > 0) {
-            this.data = this.storedData[this.storedData.length - 1];
-        }
-
         if (datumType === Array) {
             let filteredDatum = datum.filter(isValuesInObjectKeys(nullValues, keys));
             this.data = this.data.concat(filteredDatum);
