@@ -1,5 +1,5 @@
 import { SvgContext } from '../svg/base/SvgContext';
-import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys, melt } from '../utils/functions';
+import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys, melt, nestedArrayCopy } from '../utils/functions';
 import { throwError } from '../utils/error';
 import { Subscription, Observable } from 'rxjs';
 import { calculateWidth } from '../utils/screen';
@@ -100,12 +100,20 @@ abstract class Chart {
      */
     protected resumeIntervalIdentifier: number = null;
 
+    /**
+     * An identifier used to store Array type paused data with interval to tolerate long time
+     * @protected
+     * @memberof Chart
+     */
+    protected storeIntervalIdentifier: number = null;
+
     // TODO: Inject with annotations?
     private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
 
-
     /**
      * An array of data stored when pausing
+     * Two stored data type by StreamingStrategy (ADD, REPLACE):
+     * 1. Added data -> array of arrays 2. Replaced data -> array of objects
      * @protected
      * @memberof Chart
      */
@@ -175,7 +183,14 @@ abstract class Chart {
     public draw(data: [{}] = this.data) {
         // TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like).
         this.context.draw(copy(data));
-        this.data = data;
+
+        if (this.storedData.length > 0 && this.resumeIntervalIdentifier) {
+            let storedData = nestedArrayCopy(this.storedData);
+            let lastPausedData = storedData[storedData.length - 1];
+            this.data = lastPausedData;
+        } else {
+            this.data = data;
+        }
     }
 
     /**
@@ -306,10 +321,6 @@ abstract class Chart {
 
         let cleanDatum = this.cleanDatum(datum, dataKeys);
 
-        if (this.storedData.length > 0) {
-            this.data = this.storedData[this.storedData.length - 1];
-        }
-
         switch (streamingStrategy) {
             case StreamingStrategy.ADD:
                 this.data = this.data.concat(cleanDatum);
@@ -367,29 +378,52 @@ abstract class Chart {
 
     /**
     * @method
-    * @todo Issue: storedData has too many elements if data is array
+    * It sets interval to push incoming added data to avoid loading too many paused data
     * @private
     * @memberof Chart
     */
     public pauseDrawing() {
-        let maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
-            numberOfPausedElements = this.storedData.length;
-
         this.stopDrawing();
         this.resumeIntervalIdentifier = null;
 
-        this.storedData.push(this.data);
+        if (Array.isArray(this.data)) {
+            if (!this.storeIntervalIdentifier) {
+                this.storeIntervalIdentifier = setInterval (() => {
+                        this.storedData.push(copy(this.data));
+                    },
+                    Globals.DRAW_INTERVAL
+                );
+            }
+        } else {
+            this.storedData.push(this.data);
+        }
     }
 
+    /**
+     * @method
+     * Resume to draw paused streaming data -> @see this.storedData
+     * It stores incoming data to this.storedData until all of storedData is drawn
+     * @public
+     * @memberof Chart
+     */
     public resumeDrawing() {
-        this.storedData.push(this.data); // Store incoming data
+        if (!Array.isArray(this.data) && this.storedData.length > 0) {
+            this.storedData.push(this.data); // Store incoming replaced streaming data
+        }
 
         if (!this.resumeIntervalIdentifier) {
             this.resumeIntervalIdentifier = setInterval(
-                () => this.draw(copy((this.storedData.shift() != null)
-                                        ? this.storedData.shift()
-                                        : this.data)),
-                2 * Globals.DRAW_INTERVAL
+                () => {
+                    if (this.storedData.length > 0) {
+                        this.storedData[this.storedData.length - 1] = this.data;
+                        this.draw(copy(this.storedData.shift()));
+                    } else {
+                        this.draw(copy(this.data));
+                        clearInterval(this.storeIntervalIdentifier); // Stop storing incoming added streaming data
+                        this.storeIntervalIdentifier = null;
+                    }
+                },
+                Globals.DRAW_INTERVAL
             );
         }
     }

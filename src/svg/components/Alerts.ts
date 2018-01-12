@@ -51,6 +51,7 @@ class Alerts extends Component {
     * Important: Now, Alerts only takes confidence-band into account
     */
     public update(data: any[]) {
+        // console.log('data in update', data);
         let latestData = data,
             maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
             numberOfElements = data.length,
