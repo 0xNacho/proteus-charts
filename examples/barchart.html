@@ -15,7 +15,7 @@
 	<link rel="stylesheet" href="../dist/lighter.css">
   <style>
     body {
-      background-color: navy;
+      background-color: royalBlue;
       display: grid;
       grid-template-columns: 1fr 1fr
     }
@@ -27,6 +27,8 @@
 
     <div id='chart'></div>
     <div id='chartGrouped'></div>
+		<div id='chartWithNegativeValue'></div>
+		<div id="amortizationSchedule"></div>
 
 	<script>
     var data = [
@@ -40,6 +42,18 @@
       {x: 'BR', key: '+ 18 - 35', y: 40},
       {x: 'BR', key: '+ 35', y: 40}
     ];
+
+	var dataWithNegativeValue = [
+		{x: 'SP', key: '- 18', y: 30},
+        {x: 'SP', key: '+ 18 - 35', y: 25},
+        {x: 'SP', key: '+ 35', y: -12},
+        {x: 'FR', key: '- 18', y: 10},
+        {x: 'FR', key: '+ 18 - 35', y: -18},
+        {x: 'FR', key: '+ 35', y: 40},
+        {x: 'BR', key: '- 18', y: -5},
+        {x: 'BR', key: '+ 18 - 35', y: 40},
+        {x: 'BR', key: '+ 35', y: 40}
+	];
             //Default config uses #chart selector
     var barchart = new proteic.Barchart(data, {
       stacked: true,
@@ -56,6 +70,25 @@
       yAxisLabel: 'People (%)'
     });
     barchartGrouped.draw();
+
+		var barchartWithNegativeValue = new proteic.Barchart(dataWithNegativeValue, {
+			selector: '#chartWithNegativeValue',
+			stacked: false,
+			xAxisLabel: 'Countries',
+      yAxisLabel: 'People (%)',
+			colorScale: proteic.Colors.category2()
+		});
+		barchartWithNegativeValue.draw();
+
+		var amortizationScheduleChart = new proteic.Barchart(amortizationSchedule, {
+			selector: '#amortizationSchedule',
+			stacked: false,
+			xAxisLabel: 'Years',
+			xTicksTextRotation: -65,
+			yAxisLabel: '€',
+			colorScale: proteic.Colors.category1()
+		});
+		amortizationScheduleChart.draw();
 
   </script>
 </body>
