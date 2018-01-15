@@ -7,7 +7,8 @@ import {
     axisBottom,
     min as d3Min,
     max as d3Max,
-    Axis
+    Axis,
+    extent
 } from 'd3';
 import Component from './Component';
 import { Globals } from '../../../index';
@@ -60,16 +61,33 @@ class XAxis extends Component {
     public update(data: [any]): void {
         let propertyX = this.config.get('propertyX');
         let xAxisType = this.config.get('xAxisType');
+
+        let xAxisMin = this.config.get('xAxisMin'),
+            xAxisMax = this.config.get('xAxisMax');
+
         if (!this.updateXDomainByOhterComponents) {
-            // TODO: Optimize it. Currently we are looping data twice.
             if (xAxisType === 'linear') {
-                let min = d3Min(data, (d) => d[propertyX] || d[this.config.get('propertyStart')]),
-                    max = d3Max(data, (d) => d[propertyX] || d[this.config.get('propertyEnd')]);
+                let [min, max] = extent(data, (d) => d[propertyX] ||
+                                    (d[this.config.get('propertyStart')] && d[this.config.get('propertyEnd')]));
+                if (xAxisMin != 'auto') {
+                    min = (min < xAxisMin) ? min : xAxisMin;
+                }
+                if (xAxisMax != 'auto') {
+                    max = (max > xAxisMax) ? max : xAxisMax;
+                }
+
                 this.updateDomainByMinMax(min, Math.ceil(max));
 
             } else if (xAxisType === 'time') {
-                let min = d3Min(data, (d) => (d[propertyX] || d[this.config.get('propertyStart')])),
-                    max = d3Max(data, (d) => (d[propertyX] || d[this.config.get('propertyEnd')]));
+                let [min, max] = extent(data, (d) => d[propertyX] ||
+                                    (d[this.config.get('propertyStart')] && d[this.config.get('propertyEnd')]));
+                if (xAxisMin != 'auto') {
+                    min = (min < xAxisMin) ? min : xAxisMin;
+                }
+                if (xAxisMax != 'auto') {
+                    max = (max > xAxisMax) ? max : xAxisMax;
+                }
+
                 this.updateDomainByMinMax(min, max);
 
             } else {
@@ -88,7 +106,7 @@ class XAxis extends Component {
     * @private
     * @memberof XAxis
     * @todo If new components with updateDomainByMinMax is added, it is called in render() of the components
-    * @see TileSet.ts @see HistogramBarset.ts .. 
+    * @see TileSet.ts @see HistogramBarset.ts ..
     */
     public setUpdateDomainByOhterComponent(): void {
         if (this.updateXDomainByOhterComponents == false) {

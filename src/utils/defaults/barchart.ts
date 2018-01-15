@@ -10,7 +10,7 @@ export const defaults: any = {
     xAxisFormat: '',
     xAxisLabel: '',
     xAxisGrid: false,
-    xAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    xAxisMin: 'auto',
     xAxisMax: 'auto',
     xTicksTextRotation: 0,
     yAxisType: 'linear',

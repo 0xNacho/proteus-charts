@@ -11,7 +11,7 @@ export const defaults: any = {
     xAxisFormat: '',
     xAxisLabel: null,
     xAxisGrid: true,
-    xAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    xAxisMin: 'auto',
     xAxisMax: 'auto',
     xTicksTextRotation: -65,
     yAxisType: 'linear',
@@ -19,7 +19,7 @@ export const defaults: any = {
     yAxisLabel: null,
     yAxisShow: true,
     yAxisGrid: true,
-    yAxisMin: 'auto', // default value is 'auto', it can be set to numerical value
+    yAxisMin: 'auto',
     yAxisMax: 'auto',
     marginTop: 50,
     marginRight: 250,
