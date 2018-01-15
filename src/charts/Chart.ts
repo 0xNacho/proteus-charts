@@ -100,12 +100,20 @@ abstract class Chart {
      */
     protected resumeIntervalIdentifier: number = null;
 
+    /**
+     * An identifier used to store Array type paused data with interval to tolerate long time
+     * @protected
+     * @memberof Chart
+     */
+    protected storeIntervalIdentifier: number = null;
+
     // TODO: Inject with annotations?
     private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
 
-
     /**
      * An array of data stored when pausing
+     * Two stored data type by StreamingStrategy (ADD, REPLACE):
+     * 1. Added data -> array of arrays 2. Replaced data -> array of objects
      * @protected
      * @memberof Chart
      */
@@ -175,7 +183,14 @@ abstract class Chart {
     public draw(data: [{}] = this.data) {
         // TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like).
         this.context.draw(copy(data));
-        this.data = data;
+
+        // The last element of stored data should be concated with incoming data @see keepDrawing()
+        if (this.storedData.length > 0 && this.resumeIntervalIdentifier) {
+            let lastPausedData = this.storedData[this.storedData.length - 1];
+            this.data = lastPausedData;
+        } else {
+            this.data = data;
+        }
     }
 
     /**
@@ -269,7 +284,6 @@ abstract class Chart {
 
     public keepDrawing(datum: any): void {
         let streamingStrategy = this.config.get('streamingStrategy'),
-            maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
             propertyX = this.config.get('propertyX'),
             propertyY = this.config.get('propertyY'),
             propertyZ = this.config.get('propertyZ'),
@@ -307,14 +321,9 @@ abstract class Chart {
 
         let cleanDatum = this.cleanDatum(datum, dataKeys);
 
-        if (this.storedData.length > 0) {
-            this.data = this.storedData[this.storedData.length - 1];
-        }
-
         switch (streamingStrategy) {
             case StreamingStrategy.ADD:
                 this.data = this.data.concat(cleanDatum);
-
                 break;
             case StreamingStrategy.REPLACE:
                 this.data = cleanDatum;
@@ -324,12 +333,7 @@ abstract class Chart {
             default:
         }
 
-        let numberOfElements = this.data.length;
-        // Detect excess of elements given a maxNumberOfElements property
-        if (numberOfElements > maxNumberOfElements) {
-            let position = numberOfElements - maxNumberOfElements;
-            this.data = this.data.slice(position);
-        }
+        this.sliceExcessStreamingData();
 
         if (pause) {
             this.pauseDrawing();
@@ -342,7 +346,8 @@ abstract class Chart {
     }
 
     /**
-    * @method It can draw for streaming chart and can add components only for streaming chart (ex. pause-button)
+    * @method
+    * It can draw for streaming chart and can add components only for streaming chart (ex. pause-button)
     * @private
     * @memberof Chart
     * @todo If new components only for streaming chart, it can be added here.
@@ -355,30 +360,70 @@ abstract class Chart {
         }
     }
 
-    public pauseDrawing() {
-        let maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
-            numberOfPausedElements = this.storedData.length;
+    /**
+    * @method
+    * It slices excess streaming data detected by configurated maxNumberOfElements property
+    * @private
+    * @memberof Chart
+    */
+    public sliceExcessStreamingData() {
+        let numberOfElements = this.data.length,
+            maxNumberOfElements: number = this.config.get('maxNumberOfElements');
 
-        this.stopDrawing();
-        this.resumeIntervalIdentifier = null;
-
-        this.storedData.push(this.data);
-        // Slice excess paused data to prevent data overloading
-        if (numberOfPausedElements > maxNumberOfElements) {
-            let position = numberOfPausedElements - maxNumberOfElements;
-            this.storedData = this.storedData.slice(position);
+        if (numberOfElements > maxNumberOfElements) {
+            let position = numberOfElements - maxNumberOfElements;
+            this.data = this.data.slice(position);
         }
     }
 
+    /**
+    * @method
+    * It sets interval to push incoming added data to avoid loading too many paused data
+    * @private
+    * @memberof Chart
+    */
+    public pauseDrawing() {
+        this.stopDrawing();
+        this.resumeIntervalIdentifier = null;
+
+        if (Array.isArray(this.data)) {
+            if (!this.storeIntervalIdentifier) {
+                this.storeIntervalIdentifier = setInterval (() => {
+                        this.storedData.push(copy(this.data));
+                    },
+                    Globals.DRAW_INTERVAL
+                );
+            }
+        } else {
+            this.storedData.push(this.data);
+        }
+    }
+
+    /**
+     * @method
+     * Resume to draw paused streaming data -> @see this.storedData
+     * It stores incoming data to this.storedData until all of storedData is drawn
+     * @public
+     * @memberof Chart
+     */
     public resumeDrawing() {
-        this.storedData.push(this.data); // Store incoming data
+        if (!Array.isArray(this.data) && this.storedData.length > 0) {
+            this.storedData.push(this.data); // Store incoming replaced streaming data
+        }
 
         if (!this.resumeIntervalIdentifier) {
             this.resumeIntervalIdentifier = setInterval(
-                () => this.draw(copy((this.storedData.shift() != null)
-                                        ? this.storedData.shift()
-                                        : this.data)),
-                2 * Globals.DRAW_INTERVAL
+                () => {
+                    if (this.storedData.length > 0) {
+                        this.storedData[this.storedData.length - 1] = this.data;
+                        this.draw(copy(this.storedData.shift()));
+                    } else {
+                        this.draw(copy(this.data));
+                        clearInterval(this.storeIntervalIdentifier); // Stop storing incoming added streaming data
+                        this.storeIntervalIdentifier = null;
+                    }
+                },
+                Globals.DRAW_INTERVAL
             );
         }
     }

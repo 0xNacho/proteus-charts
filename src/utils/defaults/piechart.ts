@@ -16,7 +16,7 @@ export const defaults: any = {
     legendPosition: 'right',
     propertyX: 'x',
     propertyKey: 'key',
-    streamingStrategy: StreamingStrategy.REPLACE,
+    streamingStrategy: StreamingStrategy.ADD,
     onDown(d: any) {
     },
     onHover(d: any) {

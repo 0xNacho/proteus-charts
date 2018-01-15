@@ -55,7 +55,7 @@ export function isPercentage(n: any) {
 
 /**
  * Reshapes a datum from wide format to narrow
- * 
+ *
  * For example:
  * { id: 1234, name: 'Bob', age: 32, weight: 86 }
  *    =>
@@ -63,7 +63,7 @@ export function isPercentage(n: any) {
  *    { id: 1234, name: 'Bob', key: age, value: 32 },
  *    { id: 1234, name: 'Bob', key: weight, value: 86 }
  * ]
- * 
+ *
  */
 export function melt(
   wideDatum: any,
@@ -124,6 +124,18 @@ export function copy(object: {}) {
   return object != null ? JSON.parse(JSON.stringify(object)) : null;
 }
 
+export function nestedArrayCopy(array: any) {
+  if (Array.isArray(array)) {
+    let copyArray = array.slice(0);
+    for (let i = 0; i < copyArray.length; i++ ) {
+      copyArray[i] = nestedArrayCopy(copyArray[i]);
+    }
+      return copyArray;
+  } else {
+      return array;
+  }
+}
+
 export function deg2rad(deg: number) {
   return deg * Math.PI / 180;
 }
@@ -166,7 +178,7 @@ export function filterKeys(datum: any, keys: any[]) {
   return anemicDatum;
 }
 
-// /** 
+// /**
 //  * Get the list of visualizations available in Proteic.js
 //  */
 export function getAvailableVisualizations(): String[] {
