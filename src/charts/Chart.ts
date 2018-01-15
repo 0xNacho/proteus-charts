@@ -1,5 +1,5 @@
 import { SvgContext } from '../svg/base/SvgContext';
-import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys, melt, nestedArrayCopy } from '../utils/functions';
+import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys, melt } from '../utils/functions';
 import { throwError } from '../utils/error';
 import { Subscription, Observable } from 'rxjs';
 import { calculateWidth } from '../utils/screen';
@@ -184,9 +184,9 @@ abstract class Chart {
         // TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like).
         this.context.draw(copy(data));
 
+        // The last element of stored data should be concated with incoming data @see keepDrawing()
         if (this.storedData.length > 0 && this.resumeIntervalIdentifier) {
-            let storedData = nestedArrayCopy(this.storedData);
-            let lastPausedData = storedData[storedData.length - 1];
+            let lastPausedData = this.storedData[this.storedData.length - 1];
             this.data = lastPausedData;
         } else {
             this.data = data;
