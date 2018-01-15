@@ -147,12 +147,19 @@ class Barset extends Component {
             )
             .attr('transform', (d: any) => 'translate(' + xGroup(d[propertyKey]) + ')')
             .attr('height', 0)  // This makes the transition start
-            .attr('y', height)  // at the bottom of the chart
+            .attr('y', y(0))  // at the bottom of the chart
             .attr('x', (d: any) => x(d[propertyX]))
             .attr('width', xGroup.bandwidth());
 
         // EXIT bars
         this.elementExit = bars.exit();
+
+        this.svg.select('.baseline').remove();
+        this.svg.append('line')
+          .attr('class', 'baseline')
+          .attr('y1', y(0))
+          .attr('y2', y(0))
+          .attr('x2', width);
 
     }
 
@@ -181,8 +188,10 @@ class Barset extends Component {
             .transition()
             .duration(Globals.COMPONENT_ANIMATION_TIME)
             .ease(easeLinear)
-            .attr('y', (d: any) => height - y(d[propertyY]))
-            .attr('height', (d: any) => y(d[propertyY]));
+            .attr('y', (d: any) => {
+                return d[propertyY] > 0 ? y(d[propertyY]) : y(0);
+            })
+            .attr('height', (d: any) => Math.abs(y(0) - y(d[propertyY])));
 
         this.elementExit
             .transition()
@@ -195,9 +204,11 @@ class Barset extends Component {
             .transition()
             .duration(Globals.COMPONENT_ANIMATION_TIME)
             .ease(easeLinear)
-            .attr('y', (d: any) => height - y(d[propertyY]))
+            .attr('y', (d: any) => {
+                return d[propertyY] > 0 ? y(d[propertyY]) : y(0);
+            })
             .attr('width', xGroup.bandwidth())
-            .attr('height', (d: any) => y(d[propertyY]));
+            .attr('height', (d: any) => Math.abs(y(0) - y(d[propertyY])));
     }
 
     public clear() {

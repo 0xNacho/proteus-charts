@@ -9,7 +9,8 @@ import {
     axisLeft,
     axisRight,
     min as d3Min,
-    max as d3Max
+    max as d3Max,
+    extent
 } from 'd3';
 import { simple2stacked } from '../../utils/data/transforming';
 
@@ -103,8 +104,18 @@ class YAxis extends Component {
                 min = (d3Min(stackedData, (serie: any) => d3Min(serie, (d: any) => d[0])));
                 max = (d3Max(stackedData, (serie: any) => d3Max(serie, (d: any) => d[1])));
             } else {
-                min = (d3Min(data, (d: any) => d[propertyY]));
-                max = (d3Max(data, (d: any) => d[propertyY]));
+                let yAxisMin = this.config.get('yAxisMin'),
+                    yAxisMax = this.config.get('yAxisMax');
+
+                [min, max] = extent(data, (d: any) => d[propertyY]);
+
+                if (yAxisMin != 'auto') {
+                    min = (min < yAxisMin) ? min : yAxisMin;
+                }
+
+                if (yAxisMax != 'auto') {
+                    max = (max > yAxisMax) ? max : yAxisMax;
+                }
             }
 
             let minNumber = +min;
@@ -145,6 +156,9 @@ class YAxis extends Component {
 
     public updateDomainByMinMax(min: number, max: number) {
         let margin = (+max - min) * 0.1 || 1;
+        if (min < 0) {
+            min = min - margin;
+        }
         this._yAxis.scale().domain([min, max + margin]);
     }
 
