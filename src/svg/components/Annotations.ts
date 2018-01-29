@@ -164,6 +164,9 @@ class Annotations extends Component {
                             let width = a.width;
                             if (typeof a.width == 'string') {
                                 width = this.events.get(a.width);
+                                if (!width) {
+                                    throw new Error(`Invalid value of annotation width '${a.width}': ${width}`);
+                                }
                             }
                             if (width !== 0) {
                                 return this.makeBandAnnotation(a.value, width, a.text);
