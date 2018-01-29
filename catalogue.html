@@ -494,28 +494,28 @@
   ];
 
   var dataParallel = [	// missing some dimensions
-  {'name': 'AMC Ambassador Brougham', 'economy (mpg)': 13,
+  {'name': 'Brougham', 'economy (mpg)': 13,
   'cylinders': 8, 'power (hp)': 175,	// missing 'displacement (cc)'
   'weight (lb)': 3821, '0-60 mph (s)': 11, 'year': 73 },
-  {'name': 'AMC Ambassador DPL', 'economy (mpg)': 15,
+  {'name': 'DPL', 'economy (mpg)': 15,
   'cylinders': 8, 'displacement (cc)': 390, 'power (hp)': 190,
   'weight (lb)': 3850, '0-60 mph (s)': 8.5, 'year': 70 },
-  {'name': 'AMC Ambassador SST',	// missing 'economy (mpg)'
+  {'name': 'SST',	// missing 'economy (mpg)'
   'cylinders': 8, 'displacement (cc)': 304, 'power (hp)': 150,
   'weight (lb)': 3672, '0-60 mph (s)': 11.5, 'year': 72 },
-  {'name': 'AMC Concord DL 6', 'economy (mpg)': 20.2,
+  {'name': 'Concord DL6', 'economy (mpg)': 20.2,
   'cylinders': 6, 'displacement (cc)': 232, 'power (hp)': 90,
   'weight (lb)': 3265, '0-60 mph (s)': 18.2, 'year': 79 },
-  {'name': 'AMC Concord DL', 'economy (mpg)': 18.1,
+  {'name': 'Concord DL', 'economy (mpg)': 18.1,
   'cylinders': 6, 'displacement (cc)': 258, 'power (hp)': 120,
   'weight (lb)': 3410, '0-60 mph (s)': 15.1, 'year': 78 },
-  {'name': 'AMC Concord DL', 'economy (mpg)': 23,
+  {'name': 'Concord DL', 'economy (mpg)': 23,
   'cylinders': 4, 'displacement (cc)': 151, 'power (hp)': 100,
   'weight (lb)': 3035, '0-60 mph (s)': 20.5, 'year': 82 },
-  {'name': 'AMC Concord', 'economy (mpg)': 19.4,
+  {'name': 'Concord', 'economy (mpg)': 19.4,
   'cylinders': 6, 'power (hp)': 90,	// missing 'displacement (cc)'
   'weight (lb)': 3210, '0-60 mph (s)': 17.2, 'year': 78 },
-  {'name': 'AMC Concord', 'economy (mpg)': 24.3,
+  {'name': 'Concord', 'economy (mpg)': 24.3,
   'cylinders': 4, 'displacement (cc)': 151, 'power (hp)': 90,
   'weight (lb)': 3003, '0-60 mph (s)': 20.1, 'year': 80 }
 ];
@@ -622,7 +622,7 @@
         legendPosition: 'top',
         marginTop: margins.top,
         marginRight: margins.right,
-        marginBottom: margins.bottom - 50,
+        marginBottom: margins.bottom,
         marginLeft: margins.left,
         maxNumberOfElements: 20
     }).datasource(dsBarchart);
@@ -679,7 +679,7 @@
         height: 200, width: '100%',
         marginTop: margins.top,
         marginRight: margins.right + 120,
-        marginBottom: margins.bottom - 50,
+        marginBottom: margins.bottom,
         marginLeft: margins.left,
         xAxisLabel: 'Categories',
         yAxisLabel: 'Categories',
@@ -846,7 +846,7 @@
         marginTop: margins.top + 25,
         marginRight: margins.right,
         marginBottom: margins.bottom,
-        marginLeft: margins.left - 50,
+        marginLeft: margins.left - 20,
         xTicksTextRotation: -65,
         legendPosition: 'top',
         maxNumberOfElements: 20
@@ -895,7 +895,7 @@
         selector: '#parallelcoordinates',
         propertyKey: 'name',
         height: 200,
-        marginRight: 100,
+        marginRight: 130,
         marginLeft: 70,
         legend: true,
         legendPosition: 'right'
@@ -906,9 +906,10 @@
         selector: '#parallelcoordinates-ws',
         propertyKey: 'name',
         height: 200,
-        marginRight: 100,
+        marginRight: 120,
         marginLeft: 70,
-        legend: true
+        legend: true,
+        pauseButtonPosition: 'right'
     }).datasource(dsParallel);
 
 </script>
