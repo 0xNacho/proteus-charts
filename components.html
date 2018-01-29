@@ -99,7 +99,7 @@
             <div class="container">
                 <ul>
                     <li><a href="#annotations">Annotations</a></li>
-                    <li><a href="#confidence-band">Confidence band</a></li>
+                    <li><a href="#confidence-band">Statistics</a></li>
                     <li><a href="#legend">Legend</a></li>
                     <li><a href="#color-palettes">Color palettes</a></li>
                 </ul>
@@ -147,7 +147,6 @@ annotationsScatterplot.draw();
     { type: 'threshold', axis: 'y', variable: 'flow', text: 'current flow'}
 ])
 .datasource(ds)
-chart.draw();
 </code></pre>
             </div>
         </div>
@@ -169,28 +168,6 @@ chart.draw();
       variable: 'flow', width: 'flowError', text: 'error'}
 ])
 .datasource(ds)
-chart.draw();
-</code></pre>
-            </div>
-        </div>
-    </div>
-
-    <div class="columns">
-        <div class="column">
-            <div id='annotations4'></div>
-        </div>
-        <div class="column">
-            <h3 class="title is-3">Alerts</h3>
-            <div class="box">
-<pre><code class="javascript">var chart = new proteic.Linechart(data,{...})
-.annotations([
-    { type: 'threshold', axis: 'y', value: 0.1, text: 'rain alert' },
-])
-.alert('rain', (value, events) => {
-    return  value > 0.1;
-}, callback, events)
-.datasource(ds)
-chart.draw();
 </code></pre>
             </div>
         </div>
@@ -198,7 +175,7 @@ chart.draw();
 
 </section>
 <section class="section" id="confidence-band">
-    <h2 class="title is-2">Confidence Band</h2>
+    <h2 class="title is-2">Statistics</h2>
     <p>The confidence band can be defined</p>
     <div class="columns">
         <div class="column">
@@ -208,12 +185,38 @@ chart.draw();
             <h3 class="title is-3">User-defined Confidence</h3>
             <div class="box">
 <pre><code class="javascript">var chart = new proteic.Linechart(data,{
-    confidenceBandOpacity: 0.3,
-    confidenceModifier: (confidence) => 0.5 * confidence,
-    propertyError: 'flowError'
-}).unpivot(['rain', 'flow'])
+    ...
+    confidenceBandOpacity: 0.3
+})
+.unpivot(['rain', 'flow'])
+.statistics([
+    { type: 'confidenceBand', variable: 'flow', confidence: 'flowError',
+      modifier: (confidence) => 0.1 * confidence }
+])
 .datasource(ds);
-chart.draw();
+</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="columns">
+        <div class="column">
+            <div id='alerts'></div>
+        </div>
+        <div class="column">
+            <h3 class="title is-3">Alerts</h3>
+            <div class="box">
+<pre><code class="javascript">var chart = new proteic.Linechart(data,{...})
+.unpivot(['flow', 'flowMean'])
+.statistics([
+    { type: 'confidenceBand', variable: 'flowMean', confidence: 'flowError',
+      modifier: (confidence) => 0.5 * confidence }
+])
+.alert('flow', (value, events) => {
+    return  value > events.get('flowMean') + events.get('flowError') ||
+                 value < events.get('flowMean') - events.get('flowError');
+}, callback, ['flowMean', 'flowError'])
+.datasource(ds)
 </code></pre>
             </div>
         </div>
@@ -494,33 +497,6 @@ chart.draw();
     .datasource(dsLinechart);
 
     new proteic.Linechart([], {
-        selector: '#annotations4',
-        height: 200,
-        width: '100%',
-        legendPosition: 'bottom',
-        marginTop: margins.top,
-        marginRight: margins.right + 80,
-        marginBottom: margins.bottom,
-        marginLeft: margins.left,
-        yAxisLabel: 'Amount',
-        xTicksTextRotation: -65,
-        propertyX: 'time',
-        propertyY: 'value',
-        propertyKey: 'key',
-        xAxisType: 'time',
-        xAxisFormat: '%Y-%m-%d %H:%M:%S',
-        maxNumberOfElements: 5855,
-    })
-    .annotations([
-        { type: 'threshold', axis: 'y', value: 0.1, text: 'rain alert' },
-    ])
-    .alert('rain', (value, events) => {
-        return  value > 0.1;
-        }, null, null)
-    .unpivot(['rain', 'flow'])
-    .datasource(dsLinechart);
-
-    new proteic.Linechart([], {
         selector: '#confidence-chart',
         height: 200,
         width: '100%',
@@ -538,10 +514,41 @@ chart.draw();
         xAxisFormat: '%Y-%m-%d %H:%M:%S',
         maxNumberOfElements: 5855,
         confidenceBandOpacity: 0.3,
-        confidenceModifier: (confidence) => 0.1 * confidence,
-        propertyError: 'flowError'
     })
     .unpivot(['rain', 'flow'])
+    .statistics([
+        { type: 'confidenceBand', variable: 'flow', confidence: 'flowError',
+          modifier: (confidence) => 0.1 * confidence }
+    ])
+    .datasource(dsLinechart);
+
+    new proteic.Linechart([], {
+        selector: '#alerts',
+        height: 200,
+        width: '100%',
+        legendPosition: 'bottom',
+        marginTop: margins.top,
+        marginRight: margins.right + 80,
+        marginBottom: margins.bottom,
+        marginLeft: margins.left,
+        yAxisLabel: 'Amount',
+        xTicksTextRotation: -65,
+        propertyX: 'time',
+        propertyY: 'value',
+        propertyKey: 'key',
+        xAxisType: 'time',
+        xAxisFormat: '%Y-%m-%d %H:%M:%S',
+        maxNumberOfElements: 5855,
+    })
+    .unpivot(['flow', 'flowMean'])
+    .statistics([
+        { type: 'confidenceBand', variable: 'flowMean', confidence: 'flowError',
+          modifier: (confidence) => 0.5 * confidence }
+    ])
+    .alert('flow', (value, events) => {
+        return  value > events.get('flowMean') + events.get('flowError') ||
+                     value < events.get('flowMean') - events.get('flowError');
+    }, null, ['flowMean', 'flowError'])
     .datasource(dsLinechart);
 
     var annotationsScatterplot = new proteic.Scatterplot(iris,{
