@@ -37,7 +37,7 @@ export const defaults: any = {
     displayValues: false,
     valuesFormat: '.2',
     streamingStrategy: StreamingStrategy.ADD,
-    nullValues: ['NULL', 'NUL', '\\N', NaN, null, 'NaN'],
+    nullValues: ['NULL', 'NUL', '\\N', NaN, null, 'NaN', undefined],
     onDown(d: any) {
     },
     onHover(d: any) {
