@@ -75,8 +75,8 @@ class Annotations extends Component {
         let propertyKey = this.config.get('propertyKey'),
             propertyY = this.config.get('propertyY');
 
-        let minNumber = this.y.extent[0],
-            maxNumber = this.y.extent[1];
+        let minYvalue = this.y.extent[0],
+            maxYvalue = this.y.extent[1];
 
         let annotations = this.annotationsConfig.filter((a: any) => a.type == 'band');
         if (annotations.length > 0) {
@@ -86,20 +86,23 @@ class Annotations extends Component {
 
                 let annotationData = data.filter((d: any) => d[propertyKey] == variable);
                 if (annotationData && annotationData.length) {
+                    let widthValue: number = 0;
                     for (let a of annotationData) {
                         if (typeof width == 'number') {
-                            a[width] = width;
+                            widthValue = width;
+                        } else if (typeof width == 'string') {
+                            widthValue = a[width];
                         }
-                        if (a[propertyY] - a[width] < minNumber) {
-                            minNumber = a[propertyY] - a[width];
+                        if (a[propertyY] - widthValue < minYvalue) {
+                            minYvalue = a[propertyY] - widthValue;
                         }
-                        if (a[propertyY] + a[width] > maxNumber) {
-                            maxNumber = a[propertyY] + a[width];
+                        if (a[propertyY] + widthValue > maxYvalue) {
+                            maxYvalue = a[propertyY] + widthValue;
                         }
                     }
                 }
             });
-            this.y.updateDomainByMinMax(minNumber, maxNumber);
+            this.y.updateDomainByMinMax(minYvalue, maxYvalue);
         }
     }
 
@@ -161,6 +164,9 @@ class Annotations extends Component {
                             let width = a.width;
                             if (typeof a.width == 'string') {
                                 width = this.events.get(a.width);
+                                if (!width) {
+                                    throw new Error(`Invalid value of annotation width '${a.width}': ${width}`);
+                                }
                             }
                             if (width !== 0) {
                                 return this.makeBandAnnotation(a.value, width, a.text);
