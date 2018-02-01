@@ -244,7 +244,7 @@ class Annotations extends Component {
             x: x,
             y: y,
             type: d3Annotation.annotationXYThreshold,
-            dy: 30,
+            dy: 63,
             dx: 0,
             subject: {
                 y1: 0,
