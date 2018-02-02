@@ -1,6 +1,6 @@
 {
   "name": "proteic",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "Streaming and static data visualization for the modern web",
   "homepage": "http://proteic.js.org/",
   "main": "dist/proteic.node.js",
