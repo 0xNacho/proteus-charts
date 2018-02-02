@@ -1,3 +1,4 @@
+/* tslint:disable */ 
 import {
     sortByField
 } from '../../../src/utils/data/sorting';
@@ -30,9 +31,9 @@ describe('Data sorting functions', () => {
     });
 
     it('sortByField(array, field) with strings', () => {
-        let array = [{ p1: "BTE", p2: 53 }, { p1: "AAL", p2: 312 }, { p1: "FFF", p2: 232 }, { p1: "ADSA", p2: 21214 }];
+        let array = [{ p1: 'BTE', p2: 53 }, { p1: 'AAL', p2: 312 }, { p1: 'FFF', p2: 232 }, { p1: 'ADSA', p2: 21214 }];
         sortByField(array, 'p1');
-        assert.deepEqual(array, [{ p1: "AAL", p2: 312 }, { p1: "ADSA", p2: 21214 }, { p1: "BTE", p2: 53 }, { p1: "FFF", p2: 232 }]);
+        assert.deepEqual(array, [{ p1: 'AAL', p2: 312 }, { p1: 'ADSA', p2: 21214 }, { p1: 'BTE', p2: 53 }, { p1: 'FFF', p2: 232 }]);
     });
 
 });

@@ -5,26 +5,20 @@ module.exports = {
     devtool: 'source-map',
     watch: false,
     entry: ['./src/core.ts', './index.ts'],
-    id: 'proteic',
     output: {
-        filename: 'dist/proteic.js',
         library: 'proteic',
-        // libraryTarget: 'umd'
-    },
-    externals:{
-        xmlhttprequest: '{XMLHttpRequest:XMLHttpRequest}'
+        libraryTarget: 'umd',
+        filename: 'dist/proteic.js',
     },
     resolve: {
-        extensions: ['', '.webpack.js', '.web.js', '.ts', '.js', '.svg']
+        extensions: ['.webpack.js', '.web.js', '.ts', '.js', '.scss'],
     },
     module: {
-        loaders: [
+        rules: [
             { test: /\.ts$/, loader: 'ts-loader' },
-            { test: /\.svg$/, loader: 'svg-inline-loader' },
         ],
     },
     plugins: [
-        new webpack.optimize.DedupePlugin(),
         new webpack.optimize.UglifyJsPlugin({
             compress: {
                 warnings: false

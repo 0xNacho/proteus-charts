@@ -18,10 +18,6 @@ class Network extends Chart {
         let datumType = datum.constructor,
             pause: boolean = this.config.get('pause');
 
-        if (this.storedData.length > 0) {
-            this.data = this.storedData[this.storedData.length - 1];
-        }
-
         if (datumType === Array) {
             this.data = this.data.concat(datum);
         } else {

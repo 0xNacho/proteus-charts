@@ -15,6 +15,7 @@ import Globals from '../Globals';
 import Annotations from '../svg/components/Annotations';
 import GlobalInjector from '../GlobalInjector';
 import ErrorSet from '../svg/components/ErrorSet';
+import Statistics from '../svg/components/Statistics';
 
 /**
  *
@@ -54,30 +55,6 @@ abstract class Chart {
     protected data: any;
 
     /**
-     *
-     * Annotation config.
-     *
-     * @private
-     * @type {*}
-     * @memberof Chart
-     */
-    private annotationsConfig: any; // TODO: We should remove this property in the future,
-    // since the rest of configuration options are specified through the config attr
-    // TODO: We should create a type for annotations
-
-    /**
-     * Events
-     *
-     * @private
-     * @type {Map<string, any>}
-     * @memberof Chart
-     */
-    private events: Map<string, any>;
-    // TODO: We should remove this property in the future,
-    // since the rest of configuration options are specified through the config attr
-
-
-    /**
      * A map containing chart subscriptions
      *
      * @private
@@ -107,26 +84,40 @@ abstract class Chart {
     // TODO: In the future this should be renamed to 'DrawStrategy',
     // since two different kind of 'strategies' should be allowed (SVG / Canvas)
 
-
+    /**
+     * An identifier used to set streaming interval when chart initially call keepDrawing()
+     * @see keepDrawing() @see streamDrawing()
+     * If this is not null at once, it implicits this instance is drawn for streaming chart
+     * @protected
+     * @memberof Chart
+     */
     protected streamingIntervalIdentifier: number = null;
 
     /**
-     * Only used to set streaming interval when chart resumes to draw at first
+     * An identifier Only used to set streaming interval when chart initially changes the state from pause to resume
      * @protected
      * @memberof Chart
      */
     protected resumeIntervalIdentifier: number = null;
 
-    // TODO: Inject with annotations?
-    private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
-
-
     /**
-     * Stored data when pausing
+     * An identifier used to store Array type paused data with interval to tolerate long time
      * @protected
      * @memberof Chart
      */
-    protected storedData: any[];
+    protected storeIntervalIdentifier: number = null;
+
+    // TODO: Inject with annotations?
+    private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
+
+    /**
+     * An array of data stored when pausing
+     * Two stored data type by StreamingStrategy (ADD, REPLACE):
+     * 1. Added data -> array of arrays 2. Replaced data -> array of objects
+     * @protected
+     * @memberof Chart
+     */
+    protected storedData: any[] = [];
 
     /**
      * Creates an instance of Chart.
@@ -139,12 +130,10 @@ abstract class Chart {
     constructor(clazz: { new (...args: any[]): SvgStrategy }, data: any, userConfig: any, defaults: any) {
         this.config = this.loadConfigFromUser(userConfig, defaults);
         this.config.put('proteicID', 'proteic-' + Date.now());
-        this.injector = new Injector();
 
             this.instantiateInjections(clazz);
 
             this.data = data;
-            this.events = new Map();
             this.config.put('pivotVars', []);
 
             this.visibilityObservable.subscribe((event: any) => {
@@ -159,8 +148,6 @@ abstract class Chart {
                     }
                 }
             });
-
-            this.storedData = [];
     }
 
     private instantiateInjections(clazz: { new (...args: any[]): SvgStrategy }) {
@@ -176,15 +163,34 @@ abstract class Chart {
 
     public annotations(annotations: any) {
         this.config.put('annotations', annotations);
-        this.annotationsConfig = annotations;
-        this.strategy.addComponent(Annotations, annotations);
+        this.strategy.addComponent('Annotations', this.config);
+
         return this;
     }
 
-    public draw(data: [{}] = this.data, events: Map<string, any> = this.events) {
+    /**
+     *Configure statistics component for current instance
+     *@public
+     *@memberof Chart
+     */
+    public statistics(statistics: any) {
+        this.config.put('statistics', statistics);
+        this.strategy.addComponent('Statistics', this.config);
+
+        return this;
+    }
+
+    public draw(data: [{}] = this.data) {
         // TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like).
-        this.context.draw(copy(data), this.events);
-        this.data = data;
+        this.context.draw(copy(data));
+
+        // The last element of stored data should be concated with incoming data @see keepDrawing()
+        if (this.storedData.length > 0 && this.resumeIntervalIdentifier) {
+            let lastPausedData = this.storedData[this.storedData.length - 1];
+            this.data = lastPausedData;
+        } else {
+            this.data = data;
+        }
     }
 
     /**
@@ -206,7 +212,7 @@ abstract class Chart {
     }
 
     private handleWebSocketError (e: any) {
-        this.strategy.addComponent(ErrorSet, this.config);
+        this.strategy.addComponent('ErrorSet', this.config);
     }
 
     public alert(variable: string, condition: Function, callback?: Function, events?: any) {
@@ -278,15 +284,12 @@ abstract class Chart {
 
     public keepDrawing(datum: any): void {
         let streamingStrategy = this.config.get('streamingStrategy'),
-            maxNumberOfElements: number = this.config.get('maxNumberOfElements'),
-            numberOfElements = this.data.length,
             propertyX = this.config.get('propertyX'),
             propertyY = this.config.get('propertyY'),
             propertyZ = this.config.get('propertyZ'),
             propertyKey = this.config.get('propertyKey'),
             propertyStart = this.config.get('propertyStart'),
             propertyEnd = this.config.get('propertyEnd'),
-            propertyError = this.config.get('propertyError'),
             pause: boolean = this.config.get('pause');
 
         let dataKeys = [
@@ -296,28 +299,9 @@ abstract class Chart {
             propertyKey,
             propertyStart,
             propertyEnd,
-            propertyError
         ].filter((p) => p !== undefined);
 
-        if (!this.streamingIntervalIdentifier) {
-            this.streamingIntervalIdentifier = setInterval(() => this.draw(copy(this.data)), Globals.DRAW_INTERVAL);
-        }
-
-        let eventKeys: Set<string> = new Set<string>();
-
-        if (this.annotationsConfig) {
-            this.annotationsConfig.forEach((a: any) => {
-                eventKeys.add(a.variable);
-                eventKeys.add(a.width);
-            });
-        }
-
-        // Event detection
-        eventKeys.forEach((e) => {
-            if (e in datum) {
-                this.events.set(e, datum[e]);
-            }
-        });
+        this.streamDrawing();
 
         // Wide data to narrow and draw
         let pivotVars = this.config.get('pivotVars');
@@ -337,14 +321,9 @@ abstract class Chart {
 
         let cleanDatum = this.cleanDatum(datum, dataKeys);
 
-        if (this.storedData.length > 0) {
-            this.data = this.storedData[this.storedData.length - 1];
-        }
-
         switch (streamingStrategy) {
             case StreamingStrategy.ADD:
                 this.data = this.data.concat(cleanDatum);
-
                 break;
             case StreamingStrategy.REPLACE:
                 this.data = cleanDatum;
@@ -354,11 +333,7 @@ abstract class Chart {
             default:
         }
 
-        // Detect excess of elements given a maxNumberOfElements property
-        if (numberOfElements > maxNumberOfElements) {
-            let position = numberOfElements - maxNumberOfElements;
-            this.data = this.data.slice(position);
-        }
+        this.sliceExcessStreamingData();
 
         if (pause) {
             this.pauseDrawing();
@@ -370,21 +345,85 @@ abstract class Chart {
 
     }
 
+    /**
+    * @method
+    * It can draw for streaming chart and can add components only for streaming chart (ex. pause-button)
+    * @private
+    * @memberof Chart
+    * @todo If new components only for streaming chart, it can be added here.
+    */
+    public streamDrawing() {
+        if (!this.streamingIntervalIdentifier) {
+            this.strategy.addComponent('Pause', this.config.get('pauseButton'));
+
+            this.streamingIntervalIdentifier = setInterval(() => this.draw(copy(this.data)), Globals.DRAW_INTERVAL);
+        }
+    }
+
+    /**
+    * @method
+    * It slices excess streaming data detected by configurated maxNumberOfElements property
+    * @private
+    * @memberof Chart
+    */
+    public sliceExcessStreamingData() {
+        let numberOfElements = this.data.length,
+            maxNumberOfElements: number = this.config.get('maxNumberOfElements');
+
+        if (numberOfElements > maxNumberOfElements) {
+            let position = numberOfElements - maxNumberOfElements;
+            this.data = this.data.slice(position);
+        }
+    }
+
+    /**
+    * @method
+    * It sets interval to push incoming added data to avoid loading too many paused data
+    * @private
+    * @memberof Chart
+    */
     public pauseDrawing() {
         this.stopDrawing();
         this.resumeIntervalIdentifier = null;
-        this.storedData.push(this.data);
+
+        if (Array.isArray(this.data)) {
+            if (!this.storeIntervalIdentifier) {
+                this.storeIntervalIdentifier = setInterval (() => {
+                        this.storedData.push(copy(this.data));
+                    },
+                    Globals.DRAW_INTERVAL
+                );
+            }
+        } else {
+            this.storedData.push(this.data);
+        }
     }
 
+    /**
+     * @method
+     * Resume to draw paused streaming data -> @see this.storedData
+     * It stores incoming data to this.storedData until all of storedData is drawn
+     * @public
+     * @memberof Chart
+     */
     public resumeDrawing() {
-        this.storedData.push(this.data); // Store incoming data
+        if (!Array.isArray(this.data) && this.storedData.length > 0) {
+            this.storedData.push(this.data); // Store incoming replaced streaming data
+        }
 
         if (!this.resumeIntervalIdentifier) {
             this.resumeIntervalIdentifier = setInterval(
-                () => this.draw(copy((this.storedData.shift() != null)
-                                        ? this.storedData.shift()
-                                        : this.data)),
-                2 * Globals.DRAW_INTERVAL
+                () => {
+                    if (this.storedData.length > 0) {
+                        this.storedData[this.storedData.length - 1] = this.data;
+                        this.draw(copy(this.storedData.shift()));
+                    } else {
+                        this.draw(copy(this.data));
+                        clearInterval(this.storeIntervalIdentifier); // Stop storing incoming added streaming data
+                        this.storeIntervalIdentifier = null;
+                    }
+                },
+                Globals.DRAW_INTERVAL
             );
         }
     }

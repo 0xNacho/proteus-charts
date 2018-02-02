@@ -54,7 +54,7 @@ class SvgStrategyScatterplot extends SvgStrategy {
         this.canvasMarkers = new CanvasPointset(this.axes.x, this.axes.y);
     }
 
-    public draw(data: [{}], events: Map<string, any>) {
+    public draw(data: [{}]) {
         let xAxisFormat = this.config.get('xAxisFormat'),
             xAxisType = this.config.get('xAxisType'),
             yAxisFormat = this.config.get('yAxisFormat'),
@@ -65,7 +65,7 @@ class SvgStrategyScatterplot extends SvgStrategy {
         convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType, propertyX, propertyY);
         sortByField(data, propertyX);
 
-        this.container.updateComponents(data, events);
+        this.container.updateComponents(data);
     }
 
 
@@ -99,13 +99,12 @@ class SvgStrategyScatterplot extends SvgStrategy {
         }
 
         if (pauseButton) {
-            this.pauseButton = new PauseSet();
-            this.container.add(this.pauseButton);
+            // If its position needs to translate, then configure here @see SvgStrategyGauge
         }
 
         if (brush) {
             this.container
-                .add(new Brush(this.axes.x, this.axes.y, () => 
+                .add(new Brush(this.axes.x, this.axes.y, () =>
                     this.container.transitionComponents())
                 )
                 .add(new ClipPath(width, height, 'brush'));

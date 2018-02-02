@@ -60,10 +60,7 @@ class SvgStrategyGauge extends SvgStrategy {
         if (pauseButton) {
             let buttonXposition: number = r - 100,
                 buttonYposition: number = r + 55;
-
-            this.pauseButton = new PauseSet();
-            this.container.add(this.pauseButton);
-            this.pauseButton.translate(buttonXposition, buttonYposition);
+            this.config.put('pauseButtonTranslate', [buttonXposition, buttonYposition]);
         }
 
     }

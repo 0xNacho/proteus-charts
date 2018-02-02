@@ -54,6 +54,7 @@ class Lineset extends Component {
             .append('g')
             .attr('class', 'lineSeries')
             .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, (d: any) => d.key)
+            .attr('clip-path', 'url(#' + this.config.get('proteicID') + '_brush)')            
             .attr('stroke', (d: any) => colorScale(d.key))
             .append('svg:path')
             .style('stroke', (d: any) => colorScale(d.key))
@@ -65,13 +66,13 @@ class Lineset extends Component {
         this.elementExit = lines.exit().remove();
 
         this.elementUpdate = this.svg.selectAll('.line')
-            .data(dataSeries, (d: any) => d.key)
-            .attr('d', (d: any) => this.lineGenerator(d.values));
+            .data(dataSeries, (d: any) => d.key);
     }
 
 
     public transition() {
         this.elementUpdate
+            .attr('d', (d: any) => this.lineGenerator(d.values))
             .transition()
             .duration(Globals.COMPONENT_TRANSITION_TIME)
             .ease(easeLinear);

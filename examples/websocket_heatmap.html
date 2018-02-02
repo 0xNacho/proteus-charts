@@ -19,18 +19,33 @@
   <div id='chart-cat'></div>
 
   <script>
-    var ws = new WebSocket('ws://localhost:3000/matrix');
+  let margins = {
+      top: 20,
+      left: 70,
+      bottom: 100,
+      right: 20
+  };
+    // var ws = new WebSocket('ws://localhost:3000/matrix');
+    var ws = new WebSocket('wss://proteicws.herokuapp.com/matrix');
     var ds = new proteic.WebsocketDatasource(ws);
 
     chart = new proteic.Heatmap([], {
       xAxisType: 'linear',
-      yAxisType: 'linear'
+      yAxisType: 'linear',
+      marginTop: margins.top,
+      marginRight: margins.right + 100,
+      marginBottom: margins.bottom,
+      marginLeft: margins.left,
     }).datasource(ds);
 
     chartCat = new proteic.Heatmap([], {
       selector: '#chart-cat',
       propertyX: 'a',
-      propertyY: 'b'
+      propertyY: 'b',
+      marginTop: margins.top,
+      marginRight: margins.right + 100,
+      marginBottom: margins.bottom,
+      marginLeft: margins.left,
     }).datasource(ds);
 
     ds.start();

@@ -15,7 +15,7 @@
     text {
       fill: $font-color-bright;
     }
-    
+
     line {
       stroke: $structure-color-bright;
     }
@@ -41,6 +41,11 @@
 
   .xaxis-title {
     fill: $font-color-dark;
-    font: 0.8em Montserrat, sans-serif;
+    font: $font-main;
+  }
+
+  .baseline {
+    stroke: $structure-color-bright;
+    stroke-width: $y-axis-line-width;
   }
 }

@@ -15,7 +15,6 @@ export const defaults: any = {
     propertyKey: 'key',
     tickLabel: '',
     transitionDuration: 300,
-    maxNumberOfElements: 5, // used by keepDrawing to reduce the number of elements in the current chart //TODO
     streamingStrategy: StreamingStrategy.REPLACE,
     onDown(d: any) {
     },
@@ -28,6 +27,6 @@ export const defaults: any = {
     onUp(d: any) {
     },
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

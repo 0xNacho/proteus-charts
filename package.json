@@ -1,6 +1,6 @@
 {
   "name": "proteic",
-  "version": "0.0.27",
+  "version": "0.0.28",
   "description": "Streaming and static data visualization for the modern web",
   "homepage": "http://proteic.js.org/",
   "main": "dist/proteic.node.js",
@@ -62,10 +62,9 @@
     "chai": "^3.5.0",
     "chai-as-promised": "^6.0.0",
     "codecov": "^1.0.1",
-    "css-loader": "^0.26.1",
+    "css-loader": "^0.28.7",
     "esdoc": "^0.5.2",
-    "extract-text-webpack-plugin": "^1.0.1",
-    "file-loader": "^0.11.2",
+    "extract-text-webpack-plugin": "^3.0.1",
     "jshint": "^2.9.2",
     "karma": "^1.4.0",
     "karma-chai": "^0.1.0",
@@ -83,16 +82,14 @@
     "socket.io": "^1.4.5",
     "strip-loader": "^0.1.2",
     "style-loader": "^0.13.1",
-    "svg-inline-loader": "^0.8.0",
     "ts-loader": "^2.2.1",
-    "tslint": "^5.4.3",
+    "tslint": "^5.7.0",
     "tslint-eslint-rules": "^4.1.1",
     "tslint-loader": "^3.5.3",
     "typescript": "2.1.6",
     "uglify-js": "^2.7.4",
     "watch": "^1.0.1",
-    "webpack": "^1.14.0",
-    "webpack-dev-server": "^1.16.2",
-    "webpack-strip": "^0.1.0"
+    "webpack": "^3.7.1",
+    "webpack-dev-server": "^2.9.2"
   }
 }

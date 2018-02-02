@@ -1,3 +1,4 @@
+/* tslint:disable */ 
 import {
   isArray,
   isObject,
@@ -18,9 +19,9 @@ describe('Utils', () => {
   describe('functions', () => {
 
     it('arrayDiff(a,b)', () => {
-      let a = ["a", "b"];
-      let b = ["a", "b", "c", "d"];
-      assert.deepEqual(arrayDiff(a, b), ["c", "d"]);
+      let a = ['a', 'b'];
+      let b = ['a', 'b', 'c', 'd'];
+      assert.deepEqual(arrayDiff(a, b), ['c', 'd']);
 
     });
 
@@ -62,7 +63,7 @@ describe('Utils', () => {
 
     it('utils.isNumeric()', () => {
       assert.isOk(isNumeric(324));
-      assert.isOk(isNumeric("324"));
+      assert.isOk(isNumeric('324'));
       assert.isNotOk(isNumeric('131%'));
       assert.isNotOk(isNumeric({}));
       assert.isNotOk(isNumeric([]));
@@ -88,7 +89,7 @@ describe('Utils', () => {
 
     describe('utils.findElement()', () => {
       it('should find an element in a key/value array', () => {
-        var a = [
+        let a = [
           { key: 'a', value: 0 },
           { key: 'b', value: 1 },
           { key: 'c', value: 2 },
@@ -99,7 +100,7 @@ describe('Utils', () => {
         assert.deepEqual(findElement(a, 'key', 'd'), { key: 'd', value: 3 });
       });
       it('should return null when the element is not found', () => {
-        var a = [
+        let a = [
           { key: 'a', value: 0 },
           { key: 'b', value: 1 },
           { key: 'c', value: 2 },
@@ -111,7 +112,7 @@ describe('Utils', () => {
 
     describe('utils.deg2rad()', () => {
       it('should convert degrees to radians', () => {
-        var pi = Math.PI;
+        let pi = Math.PI;
         assert.equal(deg2rad(0), 0);
         assert.equal(deg2rad(45), pi / 4);
         assert.equal(deg2rad(60), pi / 3);

@@ -10,12 +10,16 @@ export const defaults: any = {
     xAxisFormat: '',
     xAxisLabel: '',
     xAxisGrid: false,
+    xAxisMin: 'auto',
+    xAxisMax: 'auto',
     xTicksTextRotation: 0,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: '',
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 0,
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
@@ -27,7 +31,7 @@ export const defaults: any = {
     propertyX: 'x',
     propertyY: 'y',
     propertyKey: 'key',
-    nullValues: ['NULL', 'NUL', '\\N', NaN, null],
+    nullValues: ['NULL', 'NUL', '\\N', NaN, 'NaN', null, undefined],
     stack: d3stack().value((d: any, k: any) => d.value[k]),
     streamingStrategy: StreamingStrategy.REPLACE,
     onDown(d: any) {
@@ -41,6 +45,6 @@ export const defaults: any = {
     onUp(d: any) {
     },
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

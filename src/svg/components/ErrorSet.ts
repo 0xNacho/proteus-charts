@@ -1,6 +1,6 @@
 import Config from '../../Config';
 import Component from './Component';
-import * as warning from '../../assets/warning.svg';
+import Assets from '../../utils/assets';
 
 class ErrorSet extends Component {
     constructor() {
@@ -18,7 +18,7 @@ class ErrorSet extends Component {
         this.svg.append('g')
                 .attr('class', 'warning')
                 .style('opacity', 1)
-                .html(warning);
+                .html(Assets.WARNING);
 
         this.svg.select('.svg-warning')
                 .attr('width', 200)

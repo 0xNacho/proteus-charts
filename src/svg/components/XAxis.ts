@@ -7,7 +7,8 @@ import {
     axisBottom,
     min as d3Min,
     max as d3Max,
-    Axis
+    Axis,
+    extent
 } from 'd3';
 import Component from './Component';
 import { Globals } from '../../../index';
@@ -15,6 +16,15 @@ import { Globals } from '../../../index';
 class XAxis extends Component {
 
     private _xAxis: any;
+
+    /**
+    * Boolean variable whether check other components update x-domain or not
+    * It is set by @see setUpdateDomainByOhterComponent()
+    * @private
+    * @type {boolean}
+    * @memberof XAxis
+    */
+    private updateXDomainByOhterComponents: boolean = false;
 
     constructor() {
         super();
@@ -52,23 +62,56 @@ class XAxis extends Component {
         let propertyX = this.config.get('propertyX');
         let xAxisType = this.config.get('xAxisType');
 
-        // TODO: Optimize it. Currently we are looping data twice.
-        if (xAxisType === 'linear') {
-            let min = d3Min(data, (d) => d[propertyX] || d[this.config.get('propertyStart')]),
-                max = d3Max(data, (d) => d[propertyX] || d[this.config.get('propertyEnd')]);
-            this.updateDomainByMinMax(min, Math.ceil(max));
+        let xAxisMin = this.config.get('xAxisMin'),
+            xAxisMax = this.config.get('xAxisMax');
 
-        } else if (xAxisType === 'time') {
-            let min = d3Min(data, (d) => (d[propertyX] || d[this.config.get('propertyStart')])),
-                max = d3Max(data, (d) => (d[propertyX] || d[this.config.get('propertyEnd')]));
-            this.updateDomainByMinMax(min, max);
+        if (!this.updateXDomainByOhterComponents) {
+            if (xAxisType === 'linear') {
+                let [min, max] = extent(data, (d) => d[propertyX] ||
+                                    (d[this.config.get('propertyStart')] && d[this.config.get('propertyEnd')]));
+                if (xAxisMin != 'auto') {
+                    min = (min < xAxisMin) ? min : xAxisMin;
+                }
+                if (xAxisMax != 'auto') {
+                    max = (max > xAxisMax) ? max : xAxisMax;
+                }
 
-        } else {
-            let keys: string[] = map(data, (d) => d[propertyX]).keys();
-            this.updateDomainByKeys(keys);
+                this.updateDomainByMinMax(min, Math.ceil(max));
+
+            } else if (xAxisType === 'time') {
+                let [min, max] = extent(data, (d) => d[propertyX] ||
+                                    (d[this.config.get('propertyStart')] && d[this.config.get('propertyEnd')]));
+                if (xAxisMin != 'auto') {
+                    min = (min < xAxisMin) ? min : xAxisMin;
+                }
+                if (xAxisMax != 'auto') {
+                    max = (max > xAxisMax) ? max : xAxisMax;
+                }
+
+                this.updateDomainByMinMax(min, max);
+
+            } else {
+                let keys: string[] = map(data, (d) => d[propertyX]).keys();
+                this.updateDomainByKeys(keys);
+            }
         }
 
         this.transition();
+    }
+
+    /**
+    * @method
+    * Check the other components calling 'updateDomainByMinMax' is configured
+    * It can prevent from updating x-domain frequently
+    * @private
+    * @memberof XAxis
+    * @todo If new components with updateDomainByMinMax is added, it is called in render() of the components
+    * @see TileSet.ts @see HistogramBarset.ts ..
+    */
+    public setUpdateDomainByOhterComponent(): void {
+        if (this.updateXDomainByOhterComponents == false) {
+            this.updateXDomainByOhterComponents = true;
+        }
     }
 
     private rotateTicksText(ticksText: any) {

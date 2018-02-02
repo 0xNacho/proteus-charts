@@ -6,19 +6,22 @@ import StreamingStrategy from '../../charts/enums/StreamingStrategy';
 export const defaults: any = {
     selector: '#chart',
     colorScale: Colors.sequentialPurpleInterpolated(), // TODO fix error and use proteic colours
-    legendCells: 13,
     xStep: 1,
     yStep: 1,
     xAxisType: 'categorical',
     xAxisFormat: '',
     xAxisLabel: '',
     xAxisGrid: true,
+    xAxisMin: 'auto',
+    xAxisMax: 'auto',
     xTicksTextRotation: -65,
     yAxisType: 'categorical',
     yAxisFormat: '',
     yAxisLabel: '',
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 'auto',
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
@@ -27,6 +30,7 @@ export const defaults: any = {
     height: 250,
     legend: true,
     legendPosition: 'right',
+    legendCells: 13,
     legendTitle: '',
     propertyX: 'x',
     propertyY: 'y',
@@ -46,6 +50,6 @@ export const defaults: any = {
     onUp(d: any) {
     },
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

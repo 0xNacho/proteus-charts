@@ -40,6 +40,14 @@ class Brush extends Component {
             idleTimeout = null;
         }
 
+        let brush = d3Brush()
+        // The extent of the brush is the plotting area (axes ranges)
+        .extent([
+            [this.x.range[0], this.y.range[1]],
+            [this.x.range[1], this.y.range[0]]
+        ])
+        ;
+
         let brushended = () => {
             let s = d3Event.selection;
             
@@ -58,14 +66,7 @@ class Brush extends Component {
             zoom();
         };
 
-        let brush = d3Brush()
-            .on('end', brushended)
-            // The extent of the brush is the plotting area (axes ranges)
-            .extent([
-                [this.x.range[0], this.y.range[1]],
-                [this.x.range[1], this.y.range[0]]
-            ])
-            ;
+        brush.on('end', brushended);
 
         this.brushContainer = this.svg.append('g')
             .attr('class', 'brush')

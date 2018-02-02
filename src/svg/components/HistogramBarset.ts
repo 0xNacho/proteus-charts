@@ -31,6 +31,9 @@ class HistogramBarset extends Component {
     }
 
     public render() {
+        this.x.setUpdateDomainByOhterComponent();
+        this.y.setUpdateDomainByOhterComponent();
+
         this.svg.append('g')
             .attr('class', 'proteic-bars')
             .style('fill', '#f1a30d')

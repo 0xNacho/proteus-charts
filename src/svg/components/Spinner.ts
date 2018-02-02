@@ -1,6 +1,6 @@
 import Config from '../../Config';
 import Component from './Component';
-import * as spinner from '../../assets/spinner.svg';
+import Assets from '../../utils/assets';
 
 class Spinner extends Component {
     constructor() {
@@ -9,13 +9,12 @@ class Spinner extends Component {
 
     public render(): void {
         let width: number = this.config.get('width'),
-            height: number = this.config.get('height'),
-            marginLeft: number = this.config.get('marginLeft');
+            height: number = this.config.get('height');
 
         this.svg.append('g')
                 .attr('class', 'spinner')
                 .style('opacity', 1)
-                .html(spinner);
+                .html(Assets.THROBBER);
 
         this.svg.select('.svg-spinner')
                 .attr('width', 200)

@@ -14,7 +14,10 @@ class TileSet extends Component {
         this.y = y;
     }
 
-    public render() {}
+    public render() {
+        this.x.setUpdateDomainByOhterComponent();
+        this.y.setUpdateDomainByOhterComponent();
+    }
 
     public update(data: any[]) {
         let propertyX = this.config.get('propertyX'),

@@ -9,7 +9,8 @@ import {
     axisLeft,
     axisRight,
     min as d3Min,
-    max as d3Max
+    max as d3Max,
+    extent
 } from 'd3';
 import { simple2stacked } from '../../utils/data/transforming';
 
@@ -18,6 +19,26 @@ class YAxis extends Component {
     private _yAxis: any;
     private _orient: string = 'left';
     private selection: any = null;
+
+    /**
+    * Current Max and Min y-value of data including one changed from other components
+    * It can be used as role of standard y-domain in components updating new y-domain
+    * (ex) Annotations, ConfidenceBand
+    * Warning: It is different values from _yAxis.scale().domain() @see updateDomainByMinMax()
+    * @private
+    * @type {[number, number]}
+    * @memberof YAxis
+    */
+    private yExtent: [number, number];
+
+    /**
+    * Boolean variable whether check other components update y-domain or not
+    * It is set by @see setUpdateDomainByOhterComponent()
+    * @private
+    * @type {boolean}
+    * @memberof YAxis
+    */
+    private updateYDomainByOhterComponents: boolean = false;
 
 
     constructor(orient?: string) {
@@ -70,7 +91,7 @@ class YAxis extends Component {
         let yAxisType = this.config.get('yAxisType'),
             yAxisShow = this.config.get('yAxisShow'),
             layoutStacked = this.config.get('stacked'),
-            annotations = this.config.get('annotations');
+            annotationsConfig = this.config.get('annotations');
 
         this.selection.attr('opacity', yAxisShow ? 1 : 0);
         let min: string = '0', max: string = '0';
@@ -83,34 +104,29 @@ class YAxis extends Component {
                 min = (d3Min(stackedData, (serie: any) => d3Min(serie, (d: any) => d[0])));
                 max = (d3Max(stackedData, (serie: any) => d3Max(serie, (d: any) => d[1])));
             } else {
-                min = (d3Min(data, (d: any) => d[propertyY]));
-                max = (d3Max(data, (d: any) => d[propertyY]));
+                let yAxisMin = this.config.get('yAxisMin'),
+                    yAxisMax = this.config.get('yAxisMax');
+
+                [min, max] = extent(data, (d: any) => d[propertyY]);
+
+                if (yAxisMin != 'auto') {
+                    min = (min < yAxisMin) ? min : yAxisMin;
+                }
+
+                if (yAxisMax != 'auto') {
+                    max = (max > yAxisMax) ? max : yAxisMax;
+                }
             }
 
             let minNumber = +min;
             let maxNumber = +max;
 
-            // TODO: Refactor and move this piece of code.
-            if (annotations && annotations.length) {
-                let annotation = annotations[0];
-                let variable: string = annotation.variable;
-                let width: string = annotation.width;
-                let annotationArray = data.filter((d: any) => d[propertyKey] == variable);
-                if (annotationArray && annotationArray.length) {
-                    for (let a of annotationArray) {
-                        if (a[propertyY] - a[width] < minNumber) {
-                            minNumber = a[propertyY] - a[width];
-                        }
-                        if (a[propertyY] + a[width] > maxNumber) {
-                            maxNumber = a[propertyY] + a[width];
-                        }
-                    }
-                }
+            this.yExtent = [minNumber, maxNumber];
+            if (!this.updateYDomainByOhterComponents) {
+                this.updateDomainByMinMax(minNumber, maxNumber);
             }
-            this.updateDomainByMinMax(minNumber, maxNumber);
 
         } else if (yAxisType === 'categorical') {
-            // let keys = map(data, (d: any) => d[propertyKey]).keys().sort();
             let keys: string[] = map(data, (d: any) => d[propertyY]).keys().sort();
             this._yAxis.scale().domain(keys);
         } else {
@@ -123,8 +139,26 @@ class YAxis extends Component {
 
     }
 
+    /**
+    * @method
+    * Check the other components calling 'updateDomainByMinMax' is configured
+    * It can prevent from updating y-domain frequently
+    * @private
+    * @memberof YAxis
+    * @todo If new components with updateDomainByMinMax is added, it is called in render() of the components
+    * @see TileSet.ts @see Annotations.ts @see ConfidenceBand.ts ..
+    */
+    public setUpdateDomainByOhterComponent(): void {
+        if (this.updateYDomainByOhterComponents == false) {
+            this.updateYDomainByOhterComponents = true;
+        }
+    }
+
     public updateDomainByMinMax(min: number, max: number) {
         let margin = (+max - min) * 0.1 || 1;
+        if (min < 0) {
+            min = min - margin;
+        }
         this._yAxis.scale().domain([min, max + margin]);
     }
 
@@ -146,7 +180,7 @@ class YAxis extends Component {
      * @param {string} yAxisFormat Format of the axis. This parameter is only valid when using a time axis.
      * @param {string} yAxisType Type of the axis. It can be: linear or categorical.
      *
-     * @memberOf XAxis
+     * @memberof XAxis
      */
 
     private initializeYAxis(
@@ -168,7 +202,7 @@ class YAxis extends Component {
                     : axisRight(scaleBand().rangeRound([height, 0]).padding(0.1).align(0.5));
                 break;
             default:
-                throw new Error(`Not allowed type for YAxis. Only allowed 'time', 
+                throw new Error(`Not allowed type for YAxis. Only allowed 'time',
                  'linear' or 'categorical'. Got: ` + yAxisType);
         }
 
@@ -178,8 +212,6 @@ class YAxis extends Component {
                 .tickSizeOuter(0)
                 .tickPadding(20);
         }
-
-        //
     }
 
     get yAxis() {
@@ -192,6 +224,10 @@ class YAxis extends Component {
 
     get range(): [number, number] {
         return this._yAxis.scale().range();
+    }
+
+    get extent(): [number, number] {
+        return this.yExtent;
     }
 
     public clear() {

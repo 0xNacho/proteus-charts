@@ -91,6 +91,7 @@ class Pointset extends Component {
         series = series.enter().append('g')
             .attr('class', Globals.SELECTOR_SERIE)
             .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, (d: any) => d.key)
+            .attr('clip-path', 'url(#' + this.config.get('proteicID') + '_brush)')
             .merge(series)
             ;
 

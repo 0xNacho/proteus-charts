@@ -59,6 +59,9 @@ class DialNeedle extends Component {
     }
 
     public update(data: [any]) {
+        if (typeof data === undefined || data.length == 0) {
+            return;
+        }
         let datum = data[data.length - 1],
             width = this.config.get('width'),
             height = this.config.get('height'),

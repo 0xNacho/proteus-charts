@@ -76,8 +76,7 @@ class SvgStrategyBarchart extends SvgStrategy {
         }
 
         if (pauseButton) {
-            this.pauseButton = new PauseSet();
-            this.container.add(this.pauseButton);
+            // If its position needs to translate, then configure here @see SvgStrategyGauge  
         }
 
     }

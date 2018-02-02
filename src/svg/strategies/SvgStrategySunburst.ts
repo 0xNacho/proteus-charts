@@ -46,9 +46,7 @@ class SvgStrategySunburst extends SvgStrategy {
         }
 
         if (pauseButton) {
-            this.pauseButton = new PauseSet();
-            this.container.add(this.pauseButton);
-            this.pauseButton.translate(-10 , this.config.get('height') / 2);
+            this.config.put('pauseButtonTranslate', [-10, this.config.get('height') / 2]);
         }
     }
 

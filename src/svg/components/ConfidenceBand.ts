@@ -2,38 +2,57 @@ import Component from './Component';
 import XAxis from './XAxis';
 import YAxis from './YAxis';
 import Globals from '../../Globals';
-import { area, nest, CurveFactory, Area, easeLinear } from 'd3';
+import {
+    map,
+    select,
+    area,
+    nest,
+    CurveFactory,
+    Area,
+    easeLinear
+} from 'd3';
 
 
 class ConfidenceBand extends Component {
 
     private x: XAxis;
     private y: YAxis;
+    private yExtent: [number, number];
     private areaGenerator: Area<any>;
-    private confidenceContainer: any;
 
-    constructor(x: XAxis, y: YAxis) {
+    /**
+    * A boolean variable to notice there are binding-data in svg element
+    * ConfidenceBand transition() must be called after binding data with svg element
+    * @private
+    * @type {boolean}
+    * @memberof confidenceBand
+    */
+    private bindingData: boolean = false;
+
+    /**
+    * An array of all configuration of confidence band
+    * It is gathered from 'confidenceBand' type parameter of statistics component
+    * @private
+    * @type {Array<ConfidenceBandConfig>}
+    * @memberof confidenceBand
+    */
+    private confidenceBandConfig: Array<ConfidenceBandConfig> = [];
+
+    constructor(x: XAxis, y: YAxis, config: any) {
         super();
         this.x = x;
         this.y = y;
+        for (let i = 0; i < config.length; i++) {
+            this.confidenceBandConfig.push(new ConfidenceBandConfig(config[i]));
+        }
     }
 
     public render() {
-        let height = this.config.get('height'),
-            propertyX = this.config.get('propertyX'),
-            propertyY = this.config.get('propertyY'),
-            curve: CurveFactory = this.config.get('curve'),
-            propertyError = this.config.get('propertyError'),
-            confidenceModifier = this.config.get('confidenceModifier');
+        this.y.setUpdateDomainByOhterComponent();
 
-        this.confidenceContainer = this.svg.append('g')
-            .attr('class', 'confidenceSet');
-
-        this.areaGenerator = area()
-            .curve(curve)
-            .x((d: any) => this.x.xAxis.scale()(d[propertyX]))
-            .y0((d: any) => this.y.yAxis.scale()(d[propertyY] - confidenceModifier(d[propertyError])))
-            .y1((d: any) => this.y.yAxis.scale()(d[propertyY] + confidenceModifier(d[propertyError])));
+        this.svg.select('g.statistics')
+                .append('g')
+                .attr('class', 'confidenceSet');
     }
 
     public update(data: [any]) {
@@ -41,31 +60,101 @@ class ConfidenceBand extends Component {
             colorScale = this.config.get('colorScale'),
             confidenceBandOpacity = this.config.get('confidenceBandOpacity');
 
-        let dataSeries = nest().key((d: any) => d[propertyKey]).entries(data);
+        let dataSeries = nest().key((d: any) => d[propertyKey]).entries(data),
+            series = this.svg.select('g.confidenceSet').selectAll('.confidenceSeries'),
+            confidenceBandEntries = series.data(dataSeries, (d: any) => d[propertyKey]);
 
-        let series = this.confidenceContainer.selectAll('g.confidenceSeries');
-        let confidences = series.data(dataSeries, (d: any) => d[propertyKey]);
+        let thisInstance = this;
 
-        this.elementEnter = confidences.enter()
+        this.elementEnter = confidenceBandEntries.enter()
             .append('g')
             .attr('class', 'confidenceSeries')
             .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, (d: any) => d[propertyKey])
-            .append('svg:path')
-            .attr('data-proteic-element', 'confidence')
-            .style('fill', (d: any) => colorScale(d[propertyKey]))
-            .style('fill-opacity', confidenceBandOpacity)
-            .attr('d', (d: any) => this.areaGenerator(d.values))
-            .attr('class', 'confidence');
+            .attr('clip-path', 'url(#' + this.config.get('proteicID') + '_brush)')
+            .each(function(bindingData: any) {
+                // mapping all of confidence band configure to each data and draw it
+                thisInstance.confidenceBandConfig.map((config) => {
+                    if (config.variable == bindingData[propertyKey]) {
+                        select(this)
+                            .append('svg:path')
+                            .attr('class', 'confidence')
+                            .style('fill', (d: any) => colorScale(d[propertyKey]))
+                            .style('fill-opacity', confidenceBandOpacity)
+                            .attr('d', (d: any) => thisInstance.path(d));
+                    }
+                });
+            });
+        this.bindingData = true;
 
-        this.elementExit = confidences.exit().remove();
+        this.elementExit = confidenceBandEntries.exit().remove();
 
         this.elementUpdate = this.svg.selectAll('.confidence')
-            .data(dataSeries, (d: any) => d[propertyKey])
-            .attr('d', (d: any) => this.areaGenerator(d.values));
+            .data(dataSeries, (d: any) => d[propertyKey]);
+
+        if (this.yExtent) {
+            if (data && data.length != 0) {
+                // compare with current y-extent and confidence adjusted y-extent
+                let min = (this.yExtent[0] < this.y.extent[0]) ? this.yExtent[0] : this.y.extent[0],
+                    max = (this.yExtent[1] > this.y.extent[1]) ? this.yExtent[1] : this.y.extent[1];
+
+                this.y.updateDomainByMinMax(min, max);
+            }
+            // initialize when update finished because of getting the latest y-domain extent in next update
+            this.yExtent = null;
+        }
+    }
+
+    private path(data: any) {
+        let propertyKey = this.config.get('propertyKey'),
+            propertyX = this.config.get('propertyX'),
+            propertyY = this.config.get('propertyY'),
+            curve: CurveFactory = this.config.get('curve');
+
+        let confidenceConfig = this.confidenceBandConfig.find((config) => config.variable == data[propertyKey]);
+
+        let confidenceModifier: Function = confidenceConfig.modifier,
+            confidence = confidenceConfig.confidence;
+
+        // if no y-extent adjusted by confidence-vaule exists, get current y-extent
+        let min = this.yExtent ? this.yExtent[0] : this.y.extent[0],
+            max = this.yExtent ? this.yExtent[1] : this.y.extent[1];
+
+        data.values.map((d: any) => {
+            if (d[propertyY] - confidenceModifier(d[confidence]) < min) {
+                min = d[propertyY] - confidenceModifier(d[confidence]);
+            }
+            if (d[propertyY] + confidenceModifier(d[confidence]) > max) {
+                max = d[propertyY] + confidenceModifier(d[confidence]);
+            }
+        });
+        this.yExtent = [min, max];
+
+        this.areaGenerator = area()
+            .curve(curve)
+            .x((d: any) => this.x.xAxis.scale()(d[propertyX]))
+            .y0((d: any) => this.y.yAxis.scale()(d[propertyY] - confidenceModifier(d[confidence])))
+            .y1((d: any) => this.y.yAxis.scale()(d[propertyY] + confidenceModifier(d[confidence])));
+
+        return this.areaGenerator(data.values);
     }
 
     public transition() {
+        if (!this.bindingData) {
+            return;
+        }
+
+        let propertyKey = this.config.get('propertyKey'),
+            thisInstance = this;
+
         this.elementUpdate
+            .each(function(bindingData: any) {
+                thisInstance.confidenceBandConfig.map((config: any) => {
+                    if (config.variable == bindingData[propertyKey]) {
+                        select(this)
+                            .attr('d', (d: any) => thisInstance.path(d));
+                    }
+                });
+            })
             .transition()
             .duration(Globals.COMPONENT_TRANSITION_TIME)
             .ease(easeLinear);
@@ -83,6 +172,31 @@ class ConfidenceBand extends Component {
         this.svg.selectAll(`*[data-proteic-element='confidence']`).remove();
     }
 
+}
+
+/**
+ * Type class of Confidence band configuration
+ * @class ConfidenceBandConfig
+ */
+class ConfidenceBandConfig {
+    variable: string;
+    confidence: string | number;
+    modifier: Function;
+
+    /**
+     * Class constructor.
+     * @param {config} each 'confidenceBand' type parameter of statistics component
+     */
+    constructor(config: any) {
+        this.variable = config.variable;
+        this.confidence = config.confidence;
+
+        if ('modifier' in config) { // optional config
+            this.modifier = config.modifier;
+        } else {
+            this.modifier = (confidence: number) => confidence;
+        }
+    }
 }
 
 export default ConfidenceBand;

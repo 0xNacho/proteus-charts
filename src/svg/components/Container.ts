@@ -32,7 +32,7 @@ class Container {
 
         width += marginLeft + marginRight;
         height += marginTop + marginBottom;
-        
+
         this.initializeContainer(selector, width, height, marginLeft, marginTop);
     }
 
@@ -99,10 +99,10 @@ class Container {
      * @memberOf Container
 
      */
-    public updateComponents(data: [{}], events?: Map<string, any>): void {
+    public updateComponents(data: [{}]): void {
         for (let i = 0; i < this.components.length; i++) {
             let component = this.components[i];
-            component.update(data, events);
+            component.update(data);
             if (this.udpateWithTransition) {
                 component.transition();
             }

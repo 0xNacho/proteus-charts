@@ -35,7 +35,7 @@ class Legend extends Component {
         }
 
         legend = this.svg.select('.legend');
-        
+
         entries = legend.selectAll(`.legend-entry`)
             .data(dataSeries, (d: any) => d.key);
 
@@ -52,13 +52,13 @@ class Legend extends Component {
             .style('fill', (d: any) => colorScale(d.key))
             .style('stroke', (d: any) => colorScale(d.key))
             .style('opacity', 0.8)
+            .style('cursor', 'pointer')
             .on('click.default', (d: any) => this.toggle(d));
 
         enterEntries.append('text')
             .attr('class', 'legend-txt')
             .attr('dy', '0.55em')
             .text((d: any) => d.key)
-            .style('font', '14px Montserrat, sans-serif')
             .on('click.default', () => this.toggle);
 
         enterEntries.merge(entries);

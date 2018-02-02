@@ -1,87 +1,187 @@
 import Component from './Component';
 import XAxis from './XAxis';
 import YAxis from './YAxis';
-import { max, min } from 'd3-array';
+import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys } from '../../utils/functions';
 import Globals from '../../Globals';
+import { max, min } from 'd3-array';
 import * as d3Annotation from 'd3-svg-annotation';
 import Annotation from 'd3-svg-annotation';
-import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys } from '../../utils/functions';
+import {
+    map,
+    nest
+} from 'd3';
+
+class EventKeys {
+    variable: string[] = new Array<string>();
+    width: string[] = new Array<string>();
+}
 
 class Annotations extends Component {
     private y: YAxis;
     private x: XAxis;
     private thresholdConfig: any;
+    private annotationsConfig: any;
     private annotations: any;
 
-    constructor(x: XAxis, y: YAxis, annotations: any) {
+    /**
+    * Data for annotations
+    * It is Only updated by the latest data @see makeEvents()
+    * @private
+    * @type {Map<string, any>}
+    * @memberof Annotations
+    */
+    private events: Map<string, any> = new Map();
+
+    constructor(x: XAxis, y: YAxis) {
         super();
         this.x = x;
         this.y = y;
-        this.annotations = annotations;
     }
 
-    render() {
-        let annotations = this.svg.append('g')
+    public render() {
+        this.annotationsConfig = this.config.get('annotations');
+        let bandAnnotation = this.annotationsConfig.find((a: any) => a.type == 'band');
+        if (bandAnnotation) {
+            this.y.setUpdateDomainByOhterComponent();
+        }
+
+        this.svg.append('g')
             .attr('class', 'annotations')
             .attr('clip-path', 'url(#' + this.config.get('proteicID') + ')');
     }
 
-    public update(data: [any], events: Map<string, any>) {
-        if (typeof data === undefined || data.length == 0) {
+    public update(data: [any]) {
+        if (typeof data === undefined ||
+            data.length == 0 ||
+            !this.annotationsConfig ||
+            !Array.isArray(this.annotationsConfig) ||
+            this.annotationsConfig.length == 0
+        ) {
             this.clear();
             return;
         }
+        this.updateYDomainByAnnotations(data);
 
-        let propertyX = this.config.get('propertyX'),
-            propertyY = this.config.get('propertyY'),
-            propertyZ = this.config.get('propertyZ'),
-            y = this.y.yAxis.scale(),
-            x = this.x.xAxis.scale(),
-            minX = min(data, (d) => d[propertyX]),
-            minY = min(data, (d) => d[propertyY]),
-            maxX = max(data, (d) => d[propertyX]),
-            maxY = max(data, (d) => d[propertyY]),
-            datum = null;
+        this.makeEvents(data);
 
-        if (!this.annotations) {
-            return;
+        this.makeAnnotation();
+
+        this.svg.select('.annotations')
+            .call(this.annotations)
+            .on('dblclick', () => this.annotations.editMode(!this.annotations.editMode()).update());
+    }
+
+    private updateYDomainByAnnotations(data: [any]) {
+        let propertyKey = this.config.get('propertyKey'),
+            propertyY = this.config.get('propertyY');
+
+        let minYvalue = this.y.extent[0],
+            maxYvalue = this.y.extent[1];
+
+        let annotations = this.annotationsConfig.filter((a: any) => a.type == 'band');
+        if (annotations.length > 0) {
+            annotations.map((annotation: any) => {
+                let variable: string = annotation.variable,
+                    width: string | number = annotation.width;
+
+                let annotationData = data.filter((d: any) => d[propertyKey] == variable);
+                if (annotationData && annotationData.length) {
+                    let widthValue: number = 0;
+                    for (let a of annotationData) {
+                        if (typeof width == 'number') {
+                            widthValue = width;
+                        } else if (typeof width == 'string') {
+                            widthValue = a[width];
+                        }
+                        if (a[propertyY] - widthValue < minYvalue) {
+                            minYvalue = a[propertyY] - widthValue;
+                        }
+                        if (a[propertyY] + widthValue > maxYvalue) {
+                            maxYvalue = a[propertyY] + widthValue;
+                        }
+                    }
+                }
+            });
+            this.y.updateDomainByMinMax(minYvalue, maxYvalue);
         }
+    }
 
-        let annotation: any = d3Annotation.annotation()
-            .annotations(this.annotations.map((a: any) => {
+    private makeEvents(data: [any]) {
+        let propertyKey = this.config.get('propertyKey'),
+            propertyY = this.config.get('propertyY');
+
+        let eventKeys: EventKeys = new EventKeys();
+
+        this.annotationsConfig.map((a: any) => {
+            if (a.variable) {
+                eventKeys.variable.push(a.variable);
+            }
+            if (typeof a.width == 'string') {
+                 eventKeys.width.push(a.width);
+            }
+        });
+
+        let nestedData = nest().key((d: any) => d[propertyKey]).entries(data);
+        // optimize by using key-nested data to loop only number of key times
+        nestedData.map((d) => {
+            let latestData = d.values[d.values.length - 1];
+
+            eventKeys.variable.map((v) => {
+                if (v == latestData[propertyKey]) {
+                    this.events.set(v, latestData[propertyY]);
+                }
+            });
+            eventKeys.width.map((w) => {
+                if (latestData[w]) {
+                    this.events.set(w, latestData[w]);
+                }
+            });
+        });
+    }
+
+    /**
+    * @method
+    * It makes Annotation using d3-annotation and events
+    * This function is also called in transition(). @see transition()
+    * @private
+    * @memberof Annotations
+    */
+    private makeAnnotation() {
+        let annotations: any = d3Annotation.annotation()
+            .annotations(this.annotationsConfig.map((a: any) => {
                 switch (a.type) {
                     case 'threshold':
                         if (a.variable) {
-                            a.value = events.get(a.variable);
+                            a.value = this.events.get(a.variable);
                         }
                         if (a.value) {
                             return this.makeThresholdAnnotation(a);
                         }
                         break;
                     case 'band':
-                        a.value = events.get(a.variable);
+                        a.value = this.events.get(a.variable);
                         if (a.value && a.width) {
                             let width = a.width;
                             if (typeof a.width == 'string') {
-                                width = events.get(a.width);
+                                width = this.events.get(a.width);
+                                if (!width) {
+                                    throw new Error(`Invalid value of annotation width '${a.width}': ${width}`);
+                                }
                             }
                             if (width !== 0) {
-                                return this.makeBandAnnotation(a.value, width, a.text, minY);
+                                return this.makeBandAnnotation(a.value, width, a.text);
                             }
                         }
                         break;
                     default:
                         throw new Error(`Unknown annotation type: ${a.type}`);
                 }
-                return annotation;
+                return annotations;
             }).filter((a: any) => a)); // Filter nulls
-
-        this.svg.select('.annotations')
-            .call(annotation)
-            .on('dblclick', () => annotation.editMode(!annotation.editMode()).update());
+            this.annotations = annotations;
     }
 
-    private makeBandAnnotation(value: number, width: number, text: string, minY: number) {
+    private makeBandAnnotation(value: number, width: number, text: string) {
         let chartWidth: number = this.config.get('width'),
             chartHeight: number = this.config.get('height'),
             annotation = null,
@@ -144,7 +244,7 @@ class Annotations extends Component {
             x: x,
             y: y,
             type: d3Annotation.annotationXYThreshold,
-            dy: 30,
+            dy: 63,
             dx: 0,
             subject: {
                 y1: 0,
@@ -177,7 +277,12 @@ class Annotations extends Component {
         this.svg.selectAll('.annotation').remove();
     }
 
-    public transition() { }
+    public transition() {
+        this.makeAnnotation();
+        this.svg.select('.annotations')
+            .call(this.annotations)
+            .on('dblclick', () => this.annotations.editMode(!this.annotations.editMode()).update());
+    }
 }
 
 export default Annotations;

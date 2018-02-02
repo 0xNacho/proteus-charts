@@ -13,12 +13,16 @@ export const defaults: any = {
     xAxisFormat: '%y/%m/%d',
     xAxisLabel: '',
     xAxisGrid: true,
+    xAxisMin: 'auto',
+    xAxisMax: 'auto',
     xTicksTextRotation: 0,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: '',
     yAxisShow: false,
     yAxisGrid: false,
+    yAxisMin: 'auto',
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 250,
     marginBottom: 130,
@@ -47,6 +51,6 @@ export const defaults: any = {
     streamingStrategy: StreamingStrategy.ADD,
     maxNumberOfElements: 100, // used by keepDrawing method to reduce the number of elements in the current chart
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

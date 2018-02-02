@@ -26,6 +26,5 @@ export const defaults: any = {
     propertyValue: 'value',
     streamingStrategy: StreamingStrategy.REPLACE,
     spinner: true,
-    pauseButton: false,
-    pauseButtonPosition: 'bottom'
+    pauseButton: true,
 };

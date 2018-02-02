@@ -4,18 +4,21 @@ import StreamingStrategy from '../../charts/enums/StreamingStrategy';
 export const defaults: any = {
     selector: '#chart',
     colorScale: Colors.category3(),
-    legendCells: 5,
     colorScaleType: 'categorical',
     xAxisType: 'time',
     xAxisFormat: '%y/%m/%d',
     xAxisLabel: '',
     xAxisGrid: true,
+    xAxisMin: 'auto',
+    xAxisMax: 'auto',
     xTicksTextRotation: 0,
     yAxisType: 'categorical',
     yAxisFormat: 's',
     yAxisLabel: '',
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 'auto',
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 250,
     marginBottom: 30,
@@ -24,6 +27,7 @@ export const defaults: any = {
     height: 250,
     legend: true,
     legendPosition: 'right',
+    legendCells: 5,
     legendTitle: '',
     propertyStart: 'start',
     propertyEnd: 'end',
@@ -33,7 +37,7 @@ export const defaults: any = {
     displayValues: false,
     valuesFormat: '.2',
     streamingStrategy: StreamingStrategy.ADD,
-    nullValues: ['NULL', 'NUL', '\\N', NaN, null, 'NaN'],
+    nullValues: ['NULL', 'NUL', '\\N', NaN, null, 'NaN', undefined],
     onDown(d: any) {
     },
     onHover(d: any) {
@@ -46,6 +50,6 @@ export const defaults: any = {
 
     },
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

@@ -6,7 +6,8 @@ import Legend from '../components/Legend';
 import Spinner from '../components/Spinner';
 import Annotations from '../components/Annotations';
 import Alerts from '../components/Alerts';
-import ConfidenceBand from '../components/ConfidenceBand';
+import Brush from '../components/Brush';
+import ClipPath from '../components/ClipPath';
 import PauseSet from '../components/PauseSet';
 import Config from '../../Config';
 import SvgStrategy from '../base/SvgStrategy';
@@ -39,7 +40,6 @@ class SvgStrategyLinechart extends SvgStrategy {
     private spinner: Spinner;
     private annotations: Annotations;
     private alerts: Alerts;
-    private confidenceBand: ConfidenceBand;
     private pauseButton: PauseSet;
 
     constructor() {
@@ -49,7 +49,7 @@ class SvgStrategyLinechart extends SvgStrategy {
         this.alerts = new Alerts(this.axes.x, this.axes.y);
     }
 
-    public draw(data: [{}], events: Map<string, any>) {
+    public draw(data: [{}]) {
         let xAxisFormat = this.config.get('xAxisFormat'),
             xAxisType = this.config.get('xAxisType'),
             yAxisFormat = this.config.get('yAxisFormat'),
@@ -60,7 +60,7 @@ class SvgStrategyLinechart extends SvgStrategy {
         convertByXYFormat(data, xAxisFormat, xAxisType, yAxisFormat, yAxisType, propertyX, propertyY);
         sortByField(data, propertyX);
 
-        this.container.updateComponents(data, events);
+        this.container.updateComponents(data);
     }
 
 
@@ -72,9 +72,8 @@ class SvgStrategyLinechart extends SvgStrategy {
             width = this.config.get('width'),
             height = this.config.get('height'),
             spinner = this.config.get('spinner'),
-            confidenceBand = this.config.get('confidenceBand'),
-            confidenceBandOpacity = this.config.get('confidenceBandOpacity'),
-            pauseButton = this.config.get('pauseButton');
+            pauseButton = this.config.get('pauseButton'),
+            brush = this.config.get('brush');
 
         this.container
             .add(this.axes)
@@ -85,11 +84,6 @@ class SvgStrategyLinechart extends SvgStrategy {
             this.area = new Areaset(this.axes.x, this.axes.y);
             this.container.add(this.area);
 
-        }
-
-        if (confidenceBandOpacity > 0) {
-            this.confidenceBand = new ConfidenceBand(this.axes.x, this.axes.y);
-            this.container.add(this.confidenceBand);
         }
 
         if (markerSize > 0) {
@@ -108,10 +102,16 @@ class SvgStrategyLinechart extends SvgStrategy {
         }
 
         if (pauseButton) {
-            this.pauseButton = new PauseSet();
-            this.container.add(this.pauseButton);
+            // If its position needs to translate, then configure here @see SvgStrategyGauge
         }
 
+        if (brush) {
+            this.container
+                .add(new Brush(this.axes.x, this.axes.y, () =>
+                    this.container.transitionComponents())
+                )
+                .add(new ClipPath(width, height, 'brush'));
+        }
     }
 }
 

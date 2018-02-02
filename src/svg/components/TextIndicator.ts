@@ -7,6 +7,9 @@ class TextIndicator extends Component {
     }
 
     update(data: [any]): void {
+        if (typeof data === undefined || data.length == 0) {
+            return;
+        }
         let datum = data[data.length - 1];
 
         this.svg.select('.value')

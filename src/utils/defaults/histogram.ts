@@ -9,12 +9,16 @@ export const defaults: any = {
     xAxisFormat: '',
     xAxisLabel: '',
     xAxisGrid: false,
+    xAxisMin: 'auto',
+    xAxisMax: 'auto',
     xTicksTextRotation: 0,
     yAxisType: 'linear',
     yAxisFormat: '',
     yAxisLabel: '',
     yAxisShow: true,
     yAxisGrid: true,
+    yAxisMin: 'auto',
+    yAxisMax: 'auto',
     marginTop: 20,
     marginRight: 20,
     marginBottom: 130,
@@ -37,6 +41,6 @@ export const defaults: any = {
     onUp(d: any) {
     },
     spinner: true,
-    pauseButton: false,
+    pauseButton: true,
     pauseButtonPosition: 'bottom'
 };

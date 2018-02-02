@@ -18,12 +18,12 @@
   <div id='chart'></div>
 
   <script>
-    var ws = new WebSocket('ws://192.168.3.32:3000/gauge');
+    var ws = new WebSocket('ws://localhost:3000/gauge');
 
     var ds = new proteic.WebsocketDatasource(ws);
     //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
     //Chart uses #chart selector by default
-    gauge = new proteic.Gauge([{ value: 50 }], {});
+    gauge = new proteic.Gauge([], {});
 
     gauge.draw();
 

@@ -25,7 +25,6 @@ class Areaset extends Component {
 
         this.areaGenerator = area()
             .curve(curve)
-
             .x((d: any) => this.x.xAxis.scale()(d[propertyX]))
             .y0(height)
             .y1((d: any) => this.y.yAxis.scale()(d[propertyY]));
@@ -34,25 +33,44 @@ class Areaset extends Component {
     public update(data: [any]) {
         let propertyKey = this.config.get('propertyKey');
         let dataSeries = nest().key((d: any) => d[propertyKey]).entries(data);
-        let areas = this.svg.selectAll(`.${Globals.SELECTOR_ELEMENT}`);
+        let series = this.svg.selectAll(`.${Globals.SELECTOR_ELEMENT}`);
         let colorScale = this.config.get('colorScale');
         let height = this.config.get('height');
         let areaOpacity = this.config.get('areaOpacity');
 
-        areas = areas.data(dataSeries, (d: any) => d[propertyKey])
-            .enter()
+        let areas = series.data(dataSeries, (d: any) => d[propertyKey]);
+
+        this.elementEnter = areas.enter()
             .append('g')
             .attr('class', Globals.SELECTOR_ELEMENT)
             .attr(Globals.COMPONENT_DATA_KEY_ATTRIBUTE, (d: any) => d[propertyKey])
+            .attr('clip-path', 'url(#' + this.config.get('proteicID') + '_brush)')
             .append('svg:path')
             .attr('data-proteic-element', 'area')
+            .attr('class', 'areas')
             .style('fill', (d: any) => colorScale(d[propertyKey]))
             .style('fill-opacity', areaOpacity)
             .attr('d', (d: any) => this.areaGenerator(d.values));
+
+        this.elementExit = areas.exit().remove();
+
+        this.elementUpdate = this.svg.selectAll('.areas')
+            .data(dataSeries, (d: any) => d.key);
     }
 
     public transition() {
-        // console.warn('No transition implementation for areas');
+        this.elementUpdate
+            .attr('d', (d: any) => this.areaGenerator(d.values))
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME);
+
+        this.elementEnter
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME);
+
+        this.elementExit
+            .transition()
+            .duration(Globals.COMPONENT_TRANSITION_TIME);
     }
 
     public clear() {
