@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.28] - 2018-02-02
+### Changed
+- Fixed UMD module
+
+### Fixed
+- Updated Webpack to version 3
+- Lots of fixes and improvements
+
 ## [0.0.27] - 2017-10-09
 ### Added
 -  - ⭐ **New visualization: Parallel Coordinates**
@@ -101,7 +109,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.16] - 2017-02-24
 ### Added
- - CSS themes :art: 
+ - CSS themes :art:
 
 ## [0.0.15] - 2017-02-24
 ### Fixed
@@ -125,7 +133,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.10] - 2017-02-13
 ### Changed
- - Update packaging library to UMD 
+ - Update packaging library to UMD
 
 ## [0.0.9] - 2017-02-08
 ### Added
