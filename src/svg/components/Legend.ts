@@ -59,7 +59,6 @@ class Legend extends Component {
             .attr('class', 'legend-txt')
             .attr('dy', '0.55em')
             .text((d: any) => d.key)
-            .style('font', '14px Montserrat, sans-serif')
             .on('click.default', () => this.toggle);
 
         enterEntries.merge(entries);
