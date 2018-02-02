@@ -76,8 +76,7 @@ class Dial extends Component {
                 return 'rotate(' + newAngle + ') translate(0,' + (labelInset - r) + ')';
             })
             .text((d) => d)
-            .style('text-anchor', 'middle')
-            .style('font', '18px Montserrat, sans-serif');
+            .style('text-anchor', 'middle');
     }
 
     public update() {
