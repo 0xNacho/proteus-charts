@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.29] - 2018-02-05
+### Added
+- iframe example
+
+### Changed
+- Fixed Proteic not working within an iframe
+- Remove unused storageService
+
 ## [0.0.28] - 2018-02-02
 ### Changed
 - Fixed UMD module
