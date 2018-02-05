@@ -1,0 +1,61 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class='no-js lt-ie9 lt-ie8 lt-ie7' lang=''> <![endif]-->
+<!--[if IE 7]>         <html class='no-js lt-ie9 lt-ie8' lang=''> <![endif]-->
+<!--[if IE 8]>         <html class='no-js lt-ie9' lang=''> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class='no-js' lang=''>
+<!--<![endif]-->
+
+<head>
+	<title>Simple linechart</title>
+	<script src='../node_modules/d3/build/d3.min.js'></script>
+	<script src='../dist/proteic.js'></script>
+	<link rel="stylesheet" href="../dist/proteic.css">
+</head>
+
+<body>
+	<div id='chart'></div>
+
+	<script>
+        var dataArea = [
+            {key:'serie1', x:1, y:5},
+            {key:'serie1', x:2, y:15},
+            {key:'serie1', x:3, y:35},
+            {key:'serie1', x:4, y:25},
+            {key:'serie1', x:5, y:12},
+            {key:'serie1', x:6, y:0},
+            {key:'serie1', x:7, y:21},
+            {key:'serie1', x:8, y:0},
+            {key:'serie2', x:1, y:4},
+            {key:'serie2', x:2, y:4},
+            {key:'serie2', x:3, y:20},
+            {key:'serie2', x:7, y:12},
+            {key:'serie2', x:5, y:14},
+            {key:'serie2', x:6, y:9},
+            {key:'serie2', x:4, y:12},
+            {key:'serie2', x:8, y:13}
+    ];
+    areaLinechart = new proteic.Linechart(dataArea, {
+        selector: '#chart',
+	xAxisLabel: 'Lot of numbers in an axis',
+        areaOpacity: 0.1,
+        markerSize:0,
+        markerShape: 'dot',
+        width: '90%',
+        height: 400,
+        onClick: (d) => console.log('clicking', d),
+        onUp: (d) => console.log('upping', d),
+        onHover: (d) => console.log('hovering', d),
+        onDown: (d) => console.log('downing', d),
+        onLeave: (d) => console.log('leaving', d),
+    }).annotations([
+        { type: 'threshold', axis: 'y', value: 15.2, text: 'Everything is fine below this line' },
+        { type: 'threshold', axis: 'y', value: 6.8, text: 'We\'re on trouble over this line' },
+        { type: 'threshold', axis: 'x', value: 3.1, text: 'Something could happen at this point' }
+    ]);
+    areaLinechart.draw();
+
+  </script>
+</body>
+
+</html>
