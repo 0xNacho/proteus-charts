@@ -74,7 +74,7 @@ class LinkedNodeset extends Component implements Zoomable {
             minNodeWeight = this.config.get('minNodeWeight'),
             maxNodeWeight = this.config.get('maxNodeWeight'),
             weighted = this.config.get('weighted'),
-            linkScaleRadius = scaleLinear().domain([minLinkWeight, maxLinkWeight]).range([0, 3]),
+            linkScaleRadius = scaleLinear().domain([minLinkWeight, maxLinkWeight]).range([0, 5]),
             nodeScaleRadius = scaleLinear().domain([minNodeWeight, maxNodeWeight]).range([0, 15]),
             labelShow = this.config.get('labelShow'),
             labelField = this.config.get('labelField'),
