@@ -74,8 +74,6 @@ class LinkedNodeset extends Component implements Zoomable {
     }
 
     public update(data: any) {
-      console.log('update', data);
-
         let nodeRadius = this.config.get('nodeRadius'),
             colorScale = this.config.get('colorScale'),
             linkWeight = this.config.get('linkWeight'),
@@ -98,8 +96,6 @@ class LinkedNodeset extends Component implements Zoomable {
         this.svg.selectAll('g.links').remove();
         this.svg.selectAll('g.nodes').remove();
         this.svg.selectAll('g.labels').remove();
-
-        // let series = this.svg.selectAll('')
 
         link = this.svg.append('g')
             .attr('class', 'serie')
