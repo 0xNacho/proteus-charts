@@ -14,6 +14,8 @@ import {
     forceLink,
     forceManyBody,
     forceCenter,
+    forceX as d3ForceX,
+    forceY as d3ForceY,
     Simulation,
     SimulationNodeDatum,
     SimulationLinkDatum,
@@ -30,6 +32,8 @@ class LinkedNodeset extends Component implements Zoomable {
     private dragended: any;
     private linkedByIndex: any;
     private toggle: number = 0;
+    private forceX: any;
+    private forceY: any;
 
 
     constructor() {
@@ -40,10 +44,15 @@ class LinkedNodeset extends Component implements Zoomable {
         let width: number = this.config.get('width'),
             height: number = this.config.get('height');
 
+        this.forceX = d3ForceX(width / 2).strength(0.015);
+        this.forceY = d3ForceY(height / 2).strength(0.015);
+
         this.simulation = forceSimulation()
-            .force('link', forceLink().id((d: any) => d.id).distance(50))
-            .force('charge', forceManyBody())
-            .force('center', forceCenter(width / 2, height / 2));
+            .force('link', forceLink().id((d: any) => d.id).distance(100))
+            .force('charge', forceManyBody().strength(-30).distanceMax(500))
+            .force('center', forceCenter(width / 2, height / 2))
+            .force('x', this.forceX)
+            .force('y', this.forceY);
 
         this.dragstarted = (d: SimulationNodeDatum) => {
             if (!event.active) { this.simulation.alphaTarget(0.3).restart(); }
@@ -101,7 +110,7 @@ class LinkedNodeset extends Component implements Zoomable {
             .attr('stroke', '#999')
             .attr('stroke-opacity', 1);
 
-        node = this.svg.select('g.serie').append('g')
+        node = this.svg.selectAll('g.serie').append('g')
             .attr('class', 'nodes')
             .selectAll('circle')
             .data(data.nodes)
@@ -118,7 +127,6 @@ class LinkedNodeset extends Component implements Zoomable {
 
         let chart = this;
         node
-
             .on('mousedown.user', this.config.get('onDown'))
             .on('mouseup.user', this.config.get('onUp'))
             .on('mouseleave.user', this.config.get('onLeave'))
@@ -148,7 +156,6 @@ class LinkedNodeset extends Component implements Zoomable {
             : this.ticked(link, node));
 
         this.simulation.force('link').links(data.links);
-
     }
     private tickedWithText(link: any, node: any, text: any) {
         this.ticked(link, node);
@@ -178,9 +185,11 @@ class LinkedNodeset extends Component implements Zoomable {
     }
 
     public clear() {
+        this.svg.selectAll('.serie').remove();
         this.svg.selectAll('.nodes').remove();
         this.svg.selectAll('.links').remove();
         this.svg.selectAll('.labels').remove();
+        this.render();
     }
 
     public transition() {
