@@ -98,14 +98,14 @@ abstract class Chart {
      * @protected
      * @memberof Chart
      */
-    protected resumeIntervalIdentifier: number = null;
+    protected resumeIntervalIdentifier: any = null;
 
     /**
      * An identifier used to store Array type paused data with interval to tolerate long time
      * @protected
      * @memberof Chart
      */
-    protected storeIntervalIdentifier: number = null;
+    protected storeIntervalIdentifier: any = null;
 
     // TODO: Inject with annotations?
     private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
