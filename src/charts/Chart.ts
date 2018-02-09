@@ -91,7 +91,7 @@ abstract class Chart {
      * @protected
      * @memberof Chart
      */
-    protected streamingIntervalIdentifier: number = null;
+    protected streamingIntervalIdentifier: any = null;
 
     /**
      * An identifier Only used to set streaming interval when chart initially changes the state from pause to resume
