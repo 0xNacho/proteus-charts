@@ -91,21 +91,21 @@ abstract class Chart {
      * @protected
      * @memberof Chart
      */
-    protected streamingIntervalIdentifier: number = null;
+    protected streamingIntervalIdentifier: any = null;
 
     /**
      * An identifier Only used to set streaming interval when chart initially changes the state from pause to resume
      * @protected
      * @memberof Chart
      */
-    protected resumeIntervalIdentifier: number = null;
+    protected resumeIntervalIdentifier: any = null;
 
     /**
      * An identifier used to store Array type paused data with interval to tolerate long time
      * @protected
      * @memberof Chart
      */
-    protected storeIntervalIdentifier: number = null;
+    protected storeIntervalIdentifier: any = null;
 
     // TODO: Inject with annotations?
     private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');

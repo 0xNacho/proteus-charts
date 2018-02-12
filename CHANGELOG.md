@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.30] - 2018-02-12
+### Changed
+- Transfer NPM package to @proteus-h2020 org
+
+### Fixed
+- Network chart improvements
+
 ## [0.0.29] - 2018-02-05
 ### Added
 - iframe example
@@ -24,7 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.27] - 2017-10-09
 ### Added
--  - ⭐ **New visualization: Parallel Coordinates**
+- ⭐ **New visualization: Parallel Coordinates**
 - New pause / resume button for streaming visualizations
 - New error component that shows an error sign if something went wrong
 - New brush + zoom interaction

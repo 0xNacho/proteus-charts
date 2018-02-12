@@ -16,6 +16,8 @@ export const defaults: any = {
     nodeWeight: 8,
     minLinkValue: 0,
     maxLinkValue: 10,
+    minLinkWeight: 0,
+    maxLinkWeight: 10,
     minNodeWeight: 0,
     maxNodeWeight: 100,
     weighted: false,
