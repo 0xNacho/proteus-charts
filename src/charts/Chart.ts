@@ -416,7 +416,7 @@ abstract class Chart {
                 () => {
                     if (this.storedData.length > 0) {
                         this.storedData[this.storedData.length - 1] = this.data;
-                        this.draw(copy(this.storedData.shift()));
+                        this.draw(copy(this.data));
                     } else {
                         this.draw(copy(this.data));
                         clearInterval(this.storeIntervalIdentifier); // Stop storing incoming added streaming data
