@@ -119,6 +119,10 @@ abstract class Chart {
      */
     protected storedData: any[] = [];
 
+    get paused(): boolean {
+        return this.config.get('pause');
+    }
+
     /**
      * Creates an instance of Chart.
      * @param {{ new (...args: any[]): SvgStrategy }} Class Reference to a specific strategy
