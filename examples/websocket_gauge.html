@@ -18,7 +18,7 @@
   <div id='chart'></div>
 
   <script>
-    var ws = new WebSocket('ws://localhost:3000/gauge');
+    var ws = new WebSocket('wss://proteicws.herokuapp.com/gauge');
 
     var ds = new proteic.WebsocketDatasource(ws);
     //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
