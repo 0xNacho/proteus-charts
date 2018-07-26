@@ -1,21 +1,16 @@
 import { SvgContext } from '../svg/base/SvgContext';
 import { copy, isValuesInObjectKeys, hasValuesWithKeys, filterKeys, melt } from '../utils/functions';
-import { throwError } from '../utils/error';
 import { Subscription, Observable } from 'rxjs';
 import { calculateWidth } from '../utils/screen';
 import { select } from 'd3-selection';
 
 import StreamingStrategy from './enums/StreamingStrategy';
 import Injector from '../Injector';
-import Datasource from '../datasources/Datasource';
 import WebsocketDatasource from '../datasources/WebsocketDatasource';
 import Config from '../Config';
 import SvgStrategy from '../svg/base/SvgStrategy';
 import Globals from '../Globals';
-import Annotations from '../svg/components/Annotations';
 import GlobalInjector from '../GlobalInjector';
-import ErrorSet from '../svg/components/ErrorSet';
-import Statistics from '../svg/components/Statistics';
 
 /**
  *
@@ -93,33 +88,15 @@ abstract class Chart {
      */
     protected streamingIntervalIdentifier: any = null;
 
-    /**
-     * An identifier Only used to set streaming interval when chart initially changes the state from pause to resume
-     * @protected
-     * @memberof Chart
-     */
-    protected resumeIntervalIdentifier: any = null;
-
-    /**
-     * An identifier used to store Array type paused data with interval to tolerate long time
-     * @protected
-     * @memberof Chart
-     */
-    protected storeIntervalIdentifier: any = null;
-
     // TODO: Inject with annotations?
     private visibilityObservable: Observable<any> = GlobalInjector.getRegistered('onVisibilityChange');
 
     /**
-     * An array of data stored when pausing
-     * Two stored data type by StreamingStrategy (ADD, REPLACE):
-     * 1. Added data -> array of arrays 2. Replaced data -> array of objects
-     * @protected
+     * Expose if chart is paused
+     * @public
      * @memberof Chart
      */
-    protected storedData: any[] = [];
-
-    get paused(): boolean {
+    public get paused(): boolean {
         return this.config.get('pause');
     }
 
@@ -135,23 +112,23 @@ abstract class Chart {
         this.config = this.loadConfigFromUser(userConfig, defaults);
         this.config.put('proteicID', 'proteic-' + Date.now());
 
-            this.instantiateInjections(clazz);
+        this.instantiateInjections(clazz);
 
-            this.data = data;
-            this.config.put('pivotVars', []);
+        this.data = data;
+        this.config.put('pivotVars', []);
 
-            this.visibilityObservable.subscribe((event: any) => {
-                this.stopDrawing();
-                if (!event.hidden) {
-                    // Check if this is a streaming chart, so we can set the drawing interval
-                    if (this.streamingIntervalIdentifier) {
-                        this.streamingIntervalIdentifier = setInterval(
-                            () => this.draw(copy(this.data)),
-                            Globals.DRAW_INTERVAL
-                        );
-                    }
+        this.visibilityObservable.subscribe((event: any) => {
+            this.stopDrawing();
+            if (!event.hidden) {
+                // Check if this is a streaming chart, so we can set the drawing interval
+                if (this.streamingIntervalIdentifier) {
+                    this.streamingIntervalIdentifier = setInterval(
+                        () => this.draw(copy(this.data)),
+                        Globals.DRAW_INTERVAL
+                    );
                 }
-            });
+            }
+        });
     }
 
     private instantiateInjections(clazz: { new (...args: any[]): SvgStrategy }) {
@@ -187,14 +164,7 @@ abstract class Chart {
     public draw(data: [{}] = this.data) {
         // TODO: SPLIT DATA INTO SMALL CHUNKS (stream-like).
         this.context.draw(copy(data));
-
-        // The last element of stored data should be concated with incoming data @see keepDrawing()
-        if (this.storedData.length > 0 && this.resumeIntervalIdentifier) {
-            let lastPausedData = this.storedData[this.storedData.length - 1];
-            this.data = lastPausedData;
-        } else {
-            this.data = data;
-        }
+        this.data = data;
     }
 
     /**
@@ -215,7 +185,7 @@ abstract class Chart {
         return this;
     }
 
-    private handleWebSocketError (e: any) {
+    private handleWebSocketError(e: any) {
         this.strategy.addComponent('ErrorSet', this.config);
     }
 
@@ -245,7 +215,6 @@ abstract class Chart {
 
     public stopDrawing() {
         clearInterval(this.streamingIntervalIdentifier);
-        clearInterval(this.resumeIntervalIdentifier);
     }
 
     public erase() {
@@ -342,9 +311,7 @@ abstract class Chart {
         if (pause) {
             this.pauseDrawing();
         } else {
-            if (this.storedData.length > 0) { // resume
-                this.resumeDrawing();
-            }
+            this.resumeDrawing();
         }
 
     }
@@ -382,53 +349,25 @@ abstract class Chart {
 
     /**
     * @method
-    * It sets interval to push incoming added data to avoid loading too many paused data
+    * Stops drawing data
     * @private
     * @memberof Chart
     */
     public pauseDrawing() {
         this.stopDrawing();
-        this.resumeIntervalIdentifier = null;
-
-        if (Array.isArray(this.data)) {
-            if (!this.storeIntervalIdentifier) {
-                this.storeIntervalIdentifier = setInterval (() => {
-                        this.storedData.push(copy(this.data));
-                    },
-                    Globals.DRAW_INTERVAL
-                );
-            }
-        } else {
-            this.storedData.push(this.data);
-        }
     }
 
     /**
      * @method
-     * Resume to draw paused streaming data -> @see this.storedData
-     * It stores incoming data to this.storedData until all of storedData is drawn
+     * Resume to draw streaming data
      * @public
      * @memberof Chart
      */
     public resumeDrawing() {
-        if (!Array.isArray(this.data) && this.storedData.length > 0) {
-            this.storedData.push(this.data); // Store incoming replaced streaming data
-        }
-
-        if (!this.resumeIntervalIdentifier) {
-            this.resumeIntervalIdentifier = setInterval(
-                () => {
-                    if (this.storedData.length > 0) {
-                        this.storedData[this.storedData.length - 1] = this.data;
-                        this.draw(copy(this.data));
-                    } else {
-                        this.draw(copy(this.data));
-                        clearInterval(this.storeIntervalIdentifier); // Stop storing incoming added streaming data
-                        this.storeIntervalIdentifier = null;
-                    }
-                },
-                Globals.DRAW_INTERVAL
-            );
+        const resumed = this.config.get('resumed');
+        if (resumed) {
+            this.streamingIntervalIdentifier = setInterval(() => this.draw(copy(this.data)), Globals.DRAW_INTERVAL);
+            this.config.put('resumed', false);
         }
     }
 

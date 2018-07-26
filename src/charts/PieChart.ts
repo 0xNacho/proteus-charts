@@ -1,7 +1,6 @@
 import Chart from './Chart';
 import SvgStrategyPieChart from '../svg/strategies/SvgStrategyPieChart';
 import { defaults } from '../utils/defaults/piechart';
-import { copy } from '../utils/functions';
 
 class PieChart extends Chart {
 
@@ -28,14 +27,12 @@ class PieChart extends Chart {
             this.data.push(datum);
         }
 
+        this.streamDrawing();
+
         if (pause) {
             this.pauseDrawing();
         } else {
-            if (this.storedData.length > 0) { // resume
-                this.resumeDrawing();
-            } else {
-                this.streamDrawing();
-            }
+            this.resumeDrawing();
         }
 
     }

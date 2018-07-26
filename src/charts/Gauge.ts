@@ -21,14 +21,12 @@ class Gauge extends Chart {
         }
         this.data = [datum[0]];
 
+        this.streamDrawing();
+
         if (pause) {
             this.pauseDrawing();
         } else {
-            if (this.storedData.length > 0) { // resume
-                this.resumeDrawing();
-            } else {
-                this.streamDrawing();
-            }
+            this.resumeDrawing();
         }
 
     }

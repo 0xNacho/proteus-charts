@@ -1,7 +1,6 @@
 import Chart from './Chart';
 import SvgStrategyNetwork from '../svg/strategies/SvgStrategyNetwork';
 import { defaults } from '../utils/defaults/network';
-import { copy } from '../utils/functions';
 
 class Network extends Chart {
 
@@ -24,14 +23,12 @@ class Network extends Chart {
             this.data.push(datum);
         }
 
+        this.streamDrawing();
+
         if (pause) {
             this.pauseDrawing();
         } else {
-            if (this.storedData.length > 0) { // resume
-                this.resumeDrawing();
-            } else {
-                this.draw(copy(this.data));
-            }
+            this.resumeDrawing();
         }
 
     }
