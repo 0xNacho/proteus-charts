@@ -1,7 +1,6 @@
 import Chart from './Chart';
 import SvgStrategySunburst from '../svg/strategies/SvgStrategySunburst';
 import { defaults } from '../utils/defaults/sunburst';
-import { copy } from '../utils/functions';
 
 class Sunburst extends Chart {
 
@@ -28,14 +27,12 @@ class Sunburst extends Chart {
             this.data.push(datum);
         }
 
+        this.streamDrawing();
+
         if (pause) {
             this.pauseDrawing();
         } else {
-            if (this.storedData.length > 0) { // resume
-                this.resumeDrawing();
-            } else {
-                this.streamDrawing();
-            }
+            this.resumeDrawing();
         }
 
     }

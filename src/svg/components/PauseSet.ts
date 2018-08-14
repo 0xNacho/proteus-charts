@@ -92,6 +92,7 @@ class PauseSet extends Component {
         } else {
             this.svg.select('#play').style('opacity', 0);
             this.svg.select('#pause').style('opacity', 1);
+            this.config.put('resumed', true);
         }
     }
 

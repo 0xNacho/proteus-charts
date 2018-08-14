@@ -17,7 +17,7 @@
 
 
 <script>
-  var ws = new WebSocket('ws://192.168.3.32:3000/streamgraph');
+  var ws = new WebSocket('wss://proteicws.herokuapp.com/streamgraph');
   var ds = new proteic.WebsocketDatasource(ws);
   //No draw() call, since it is connected to a endpoint and data is automaticaly drawn.
   //Chart uses #chart selector by default
