@@ -8,6 +8,7 @@
 [![codecov](https://codecov.io/gh/proteus-h2020/proteic/branch/development/graph/badge.svg)](https://codecov.io/gh/proteus-h2020/proteic/branch/development)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/4e39876ac5324eba8035c6f5ec95b52b)](https://www.codacy.com/app/0xnacho/proteic?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=proteus-h2020/proteic&amp;utm_campaign=Badge_Grade)
 [![Gitter](https://img.shields.io/gitter/room/proteus-h2020/proteic.svg?maxAge=2592000)](https://gitter.im/proteus-h2020/proteic)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fproteus-h2020%2Fproteic.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fproteus-h2020%2Fproteic?ref=badge_shield)
 
 Proteic.js is a general purpose data visualization library built for both static and streaming data. It provides a wide [catalogue](https://proteic.js.org/catalogue.html) of ready-to-use visualizations, a fluent API for easy configuration, and connectors for streams of data over different protocols like WebSocket and HTTP. The library is built with a modular architecture, focusing on code cleanliness so it can be easily extended and customized. 
 
@@ -76,3 +77,7 @@ We provide the following NPM Scripts to ease the development process. You can ru
 ### Documentation
 You can find general information about Proteic in its [website](http://proteic.js.org), developer documentation in the [Wiki](https://github.com/proteus-h2020/proteic/wiki) and API documentation in the [JSDocs](http://proteus-h2020.github.io/proteic/docs/).
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fproteus-h2020%2Fproteic.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fproteus-h2020%2Fproteic?ref=badge_large)
